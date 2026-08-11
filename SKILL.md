@@ -1,7 +1,7 @@
 ---
 name: patent-disclosure-skill
-description: "中国专利技能：交底书（发明/实用新型/外观）编写，公开专利通俗解读，政策/审查动向嗅探，审查通知自动答复。| China patents: draft disclosures (invention / utility model / design), plain-language patent reading, policy/examination-trend sniffing, office-action auto-draft."
-version: "3.3.0"
+description: "中国专利技能：专利点挖掘与交底书（发明/实用/外观）编写，通俗解读专利，嗅探政策动向，辅助审查答复。| China patents skill: mine patent points and draft disclosures (invention / utility model / design), plain-language reading, policy sniffing, assisted office-action response."
+version: "3.4.0"
 user-invocable: true
 argument-hint: "[可选：项目路径 / 专利号或 PDF / 政策动向嗅探或技能进化 / 审查答复或案例入库]"
 allowed-tools: Read, Write, Edit, Grep, Glob, WebSearch, Bash
@@ -32,7 +32,8 @@ prompts/reader/              # 通俗解读 + type_hooks
 prompts/shared/              # 写读共用：Structure / Appearance 填表 + figure_plan + 外观/实用辅助线稿
 prompts/evolution/           # 模式 C：政策/审查动向嗅探 · 进化清单（旁路，默认关）
 prompts/oa/                  # 模式 D：审查答复 / 案例入库（旁路，默认关）
-references/schemas/          # structure / appearance / figure_plan / lineart / evolution / oa_case
+references/schemas/          # structure / appearance / figure_plan / formula_plan / lineart / evolution / oa_case
+references/formulas/         # 发明公式推荐范式（paradigms.yaml，可外挂扩展）
 tools/crawl/                 # 国知局等爬取
 tools/shared/                # docx/mermaid/专利类型/可选 STEP / 可选辅助线稿门禁
 tools/patent_reader/         # 解读工具：shared/ | extract/ | analyze/ | vault/
@@ -101,7 +102,7 @@ docs/oa/                     # 模式 D：embedding 配置模板种子（运行�
 | 实用结构辅助线稿 | `prompts/shared/structure_lineart_assist.md` | 可选；默认关；轮廓→按 parts 叠序号 |
 | Step 5 | `prompts/disclosure/prior_art_search.md` | 查新（`--type`） |
 | Step 6 | `prompts/disclosure/disclosure_preview.md` | 摘要预览（按类型裁剪） |
-| Step 7 | 对应类型目录 `disclosure_builder.md` + `template_reference.md` | 成文（**分文件**） |
+| Step 7 | 对应类型目录 `disclosure_builder.md` + `template_reference.md` | 成文（**分文件**；发明含公式时先 `formula_plan.yaml`） |
 | Step 8 | `prompts/disclosure/disclosure_self_check.md` | 内部自检（含 §8.4 / §8.5） |
 | 迭代 | `disclosure/iteration_context.md` / `merger.md` / `correction_handler.md` | 另存 |
 
@@ -210,6 +211,7 @@ docs/oa/                     # 模式 D：embedding 配置模板种子（运行�
 □ 交底未指定类型时已默认发明；材料偏实用/外观已按需反问
 □ Step 3–4 / Step 7 已 Read 对应类型子目录 md（非发明套用实用/外观）
 □ 查新 cnipa 已带与案件一致的 --type；abstract 必用
+□ 发明含公式：已写 formula_plan（范式∈references/formulas）且可算数值例；禁装饰音；已 check_formula_plan 或等价自检
 □ 实用/外观已走 schema 填表（shared）并写出 figure_plan（含必要 relates_to），未看图直接长文；成文只嵌清单入文图
 □ Step 2/补材料已 cad_scan：遇 STEP 先反问再装依赖；仅原生 CAD 则回复末尾提示导出 STEP；未确认不开 step_to_views
 □ 外观若开启辅助线稿：有用户「是」、有参考图、经 design_lineart_gate；未纯文生图；辅助条默认不入正文

@@ -10,13 +10,14 @@
 **连续多行正文**（中间无空行、且非列表/标题等）时，**每一行**输出为 Word 中**独立一段**，
 以便「（1）…（2）…」等分条换行；若须在同一段内接排，请写**同一行**内或用 Markdown 空行分隔逻辑段。
 
-定稿宜先用同目录 **`mermaid_render.py`** 将 **mermaid** 转为 PNG；**LaTeX 公式**（``$...$`` / ``$$...$$``）由 **`math_render.py`**（或 ``md_to_docx`` 自动调用）转为 PNG；失败时保留原文写入 Word。
+定稿宜先用同目录 **`mermaid_render.py`** 将 **mermaid** 转为 PNG；**LaTeX 公式**优先经 **`math_to_omml.py`**（``latex2mathml``）写入 **可编辑 Office Math**，失败再回退 **`math_render.py` PNG** 或原文。
 
 用法：
   python md_to_docx.py --input disclosure.md --output disclosure.docx
   python md_to_docx.py -i a.md -o b.docx --base-dir .   # 解析图片相对路径
+  python md_to_docx.py -i a.md -o a.docx --no-omml      # 仅 PNG/原文（旧行为）
 
-依赖：python-docx
+依赖：python-docx；原生公式另需 ``pip install latex2mathml``（可选，缺则自动 PNG 回退）
 """
 
 from __future__ import annotations
@@ -34,12 +35,14 @@ from docx.shared import Inches, Pt, RGBColor
 # 插图最大尺寸（英寸）：在常见 A4、默认边距下保证整图可见、按比例缩放（不过宽也不过高）。
 _DEFAULT_IMAGE_MAX_W_IN = 5.5
 _DEFAULT_IMAGE_MAX_H_IN = 8.2
-# 公式图在 Word 中统一按固定高度嵌入（英寸），避免块级式随 PNG 像素被放大、行内式过小
-_FORMULA_DISPLAY_MAX_H_IN = 0.17
+# 公式图 Word 嵌入上限（英寸）：在「按 PNG 像素/渲染 DPI 的自然尺寸」基础上封顶，禁止强行拉高导致单行式巨字
+_FORMULA_INLINE_MAX_H_IN = 0.22
+_FORMULA_BLOCK_MAX_H_IN = 0.36
+_FORMULA_BLOCK_MAX_W_IN = 5.5
+# 与 math_render 默认 --dpi 对齐，用于把像素换算为英寸
+_FORMULA_RENDER_DPI = 220.0
 # 兼容旧名
-_FORMULA_INLINE_MAX_H_IN = _FORMULA_DISPLAY_MAX_H_IN
-_FORMULA_BLOCK_MAX_W_IN = 4.0  # 仅作块级超宽时的宽度上限（通常由固定高度约束）
-_FORMULA_BLOCK_MAX_H_IN = _FORMULA_DISPLAY_MAX_H_IN
+_FORMULA_DISPLAY_MAX_H_IN = _FORMULA_INLINE_MAX_H_IN
 
 _MD_IMAGE_RE = re.compile(r"!\[([^\]]*)\]\(([^)]+)\)")
 _HIDDEN_MD_IMAGE_COMMENT_RE = re.compile(
@@ -49,10 +52,70 @@ _INLINE_MATH_WITH_HIDDEN_IMG_RE = re.compile(
     r"(?<!\$)\$(?!\$)((?:\\.|[^$\n])+?)\$(?!\$)\s*"
     r"<!--\s*!\[([^\]]*)\]\(([^)]+)\)\s*-->"
 )
-_INLINE_MATH_PAREN_WITH_HIDDEN_IMG_RE = re.compile(
-    r"\\\(((?:\\.|[^)])+?)\\\)\s*"
-    r"<!--\s*!\[([^\]]*)\]\(([^)]+)\)\s*-->"
-)
+
+# 模块级默认：可由 convert / CLI 覆盖
+_PREFER_OMML = True
+
+
+def _try_append_omml(paragraph, latex: str, *, display: bool) -> bool:
+    """尝试把 LaTeX 挂为 OMML；成功 True。"""
+    if not _PREFER_OMML or not (latex or "").strip():
+        return False
+    try:
+        from math_to_omml import try_latex_to_omml
+    except ImportError:
+        try:
+            from tools.shared.math_to_omml import try_latex_to_omml
+        except ImportError:
+            return False
+    omml = try_latex_to_omml(latex, display=display)
+    if omml is None:
+        return False
+    try:
+        paragraph._p.append(omml)
+        return True
+    except Exception:
+        return False
+
+
+def _add_block_equation(
+    doc: Document,
+    latex: str,
+    *,
+    base_dir: Path | None = None,
+    hidden: tuple[str, str] | None = None,
+    image_max_w_in: float = _DEFAULT_IMAGE_MAX_W_IN,
+    image_max_h_in: float = _DEFAULT_IMAGE_MAX_H_IN,
+    raw_fallback_lines: list[str] | None = None,
+) -> str:
+    """块级公式：OMML → PNG → 原文。返回所用策略名。"""
+    latex = (latex or "").strip()
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.paragraph_format.space_before = Pt(3)
+    p.paragraph_format.space_after = Pt(6)
+    if latex and _try_append_omml(p, latex, display=True):
+        return "omml"
+    # OMML 失败：去掉空段，改 PNG / 原文
+    p_element = p._element
+    parent = p_element.getparent()
+    if parent is not None:
+        parent.remove(p_element)
+
+    if hidden and _formula_image_kind(*hidden):
+        ipath = _resolve_image_path(hidden[1], base_dir) if base_dir else None
+        if ipath:
+            _embed_from_image_ref(
+                hidden[0],
+                hidden[1],
+                base_dir,
+                doc=doc,
+                image_max_w_in=image_max_w_in,
+                image_max_h_in=image_max_h_in,
+            )
+            return "png"
+    _add_math_fallback_block(doc, raw_fallback_lines or ([latex] if latex else [""]))
+    return "text"
 
 
 def _parse_hidden_image_comment(line: str) -> tuple[str, str] | None:
@@ -210,7 +273,7 @@ def _embed_from_image_ref(
             p.paragraph_format.space_after = Pt(6)
             p.paragraph_format.line_spacing = 1.15
         if p is not None:
-            _embed_picture_inline(p, ipath, max_h_in=_FORMULA_DISPLAY_MAX_H_IN)
+            _embed_picture_inline(p, ipath, max_h_in=_FORMULA_INLINE_MAX_H_IN)
         return
 
     if doc is None:
@@ -225,7 +288,7 @@ def _embed_from_image_ref(
         _embed_picture_inline(
             p,
             ipath,
-            max_h_in=_FORMULA_DISPLAY_MAX_H_IN,
+            max_h_in=_FORMULA_BLOCK_MAX_H_IN,
             max_w_in=_FORMULA_BLOCK_MAX_W_IN,
         )
     else:
@@ -310,23 +373,104 @@ def _embed_picture_inline(
     *,
     max_h_in: float,
     max_w_in: float | None = None,
+    render_dpi: float = _FORMULA_RENDER_DPI,
 ) -> None:
+    """按渲染 DPI 换算自然尺寸，再限制在 max_h / max_w 内；**不上拉**矮图。"""
     try:
         dims = _image_pixel_size(path)
         run = paragraph.add_run()
         run.font.bold = False
         if dims:
             px_w, px_h = dims
-            h_in = max_h_in
-            w_in = h_in * px_w / px_h if px_h else max_h_in
-            if max_w_in is not None and w_in > max_w_in:
-                w_in = max_w_in
-                h_in = w_in * px_h / px_w if px_w else max_h_in
-            run.add_picture(str(path.resolve()), width=Inches(w_in), height=Inches(h_in))
+            dpi = render_dpi if render_dpi > 0 else 220.0
+            nat_w = px_w / dpi
+            nat_h = px_h / dpi
+            w_in, h_in = _fit_image_display_inches(
+                px_w,
+                px_h,
+                max_w_in=min(nat_w, max_w_in) if max_w_in is not None else nat_w,
+                max_h_in=min(nat_h, max_h_in),
+            )
+            # 极矮图（旧小字号）给一个下限，避免再度变成细条；但不高于 max_h
+            min_h = min(0.16, max_h_in)
+            if h_in.inches < min_h and px_h > 0:
+                h_in = Inches(min_h)
+                w_in = Inches(min_h * px_w / px_h)
+                if max_w_in is not None and w_in.inches > max_w_in:
+                    w_in = Inches(max_w_in)
+                    h_in = Inches(max_w_in * px_h / px_w)
+            run.add_picture(str(path.resolve()), width=w_in, height=h_in)
         else:
-            run.add_picture(str(path.resolve()), height=Inches(max_h_in))
+            run.add_picture(str(path.resolve()), height=Inches(min(0.2, max_h_in)))
     except Exception:
         paragraph.add_run(f"[行内公式图缺失: {path}]")
+
+
+def _iter_inline_paren_math_with_img(
+    text: str,
+) -> list[tuple[int, int, str, str, str]]:
+    """匹配 ``\\(...\\)`` + 紧随的公式 PNG 注释；返回 (start,end,latex,alt,src)。"""
+    out: list[tuple[int, int, str, str, str]] = []
+    i = 0
+    n = len(text)
+    while i < n:
+        if text.startswith("\\(", i):
+            j = i + 2
+            while j < n:
+                if text.startswith("\\)", j):
+                    latex = text[i + 2 : j]
+                    after = j + 2
+                    m = re.match(
+                        r"\s*<!--\s*!\[([^\]]*)\]\(([^)]+)\)\s*-->",
+                        text[after:],
+                    )
+                    if m:
+                        end = after + m.end()
+                        out.append(
+                            (i, end, latex, m.group(1), m.group(2).strip())
+                        )
+                        i = end
+                    else:
+                        i = after
+                    break
+                if text[j] == "\\" and j + 1 < n:
+                    j += 2
+                else:
+                    j += 1
+            else:
+                i += 2
+        else:
+            i += 1
+    return out
+
+
+def _iter_inline_paren_math_bare(text: str) -> list[tuple[int, int, str]]:
+    """无 PNG 注释的 ``\\(...\\)`` → (start, end, latex)。"""
+    out: list[tuple[int, int, str]] = []
+    i = 0
+    n = len(text)
+    while i < n:
+        if text.startswith("\\(", i):
+            j = i + 2
+            while j < n:
+                if text.startswith("\\)", j):
+                    out.append((i, j + 2, text[i + 2 : j]))
+                    i = j + 2
+                    break
+                if text[j] == "\\" and j + 1 < n:
+                    j += 2
+                else:
+                    j += 1
+            else:
+                i += 2
+        else:
+            i += 1
+    return out
+
+
+_BARE_DOLLAR_MATH_RE = re.compile(
+    r"(?<!\$)\$(?!\$)((?:\\.|[^$\n])+?)\$(?!\$)"
+)
 
 
 def _add_rich_content_to_paragraph(
@@ -334,7 +478,7 @@ def _add_rich_content_to_paragraph(
     text: str,
     base_dir: Path | None,
     *,
-    formula_inline_max_h_in: float = _FORMULA_DISPLAY_MAX_H_IN,
+    formula_inline_max_h_in: float = _FORMULA_INLINE_MAX_H_IN,
     image_max_w_in: float = _DEFAULT_IMAGE_MAX_W_IN,
     image_max_h_in: float = _DEFAULT_IMAGE_MAX_H_IN,
     mono: bool = False,
@@ -344,14 +488,21 @@ def _add_rich_content_to_paragraph(
     tokens: list[tuple[int, int, str, tuple]] = []
 
     for m in _INLINE_MATH_WITH_HIDDEN_IMG_RE.finditer(text):
-        tokens.append((m.start(), m.end(), "math_img", (m.group(2), m.group(3).strip())))
+        tokens.append(
+            (
+                m.start(),
+                m.end(),
+                "math_omml_or_img",
+                (m.group(1), m.group(2), m.group(3).strip()),
+            )
+        )
         taken.append((m.start(), m.end()))
 
-    for m in _INLINE_MATH_PAREN_WITH_HIDDEN_IMG_RE.finditer(text):
-        if _span_overlaps(taken, m.start(), m.end()):
+    for start, end, latex, alt, src in _iter_inline_paren_math_with_img(text):
+        if _span_overlaps(taken, start, end):
             continue
-        tokens.append((m.start(), m.end(), "math_img", (m.group(2), m.group(3).strip())))
-        taken.append((m.start(), m.end()))
+        tokens.append((start, end, "math_omml_or_img", (latex, alt, src)))
+        taken.append((start, end))
 
     for m in _HIDDEN_MD_IMAGE_COMMENT_RE.finditer(text):
         if _span_overlaps(taken, m.start(), m.end()):
@@ -363,6 +514,18 @@ def _add_rich_content_to_paragraph(
         if _span_overlaps(taken, m.start(), m.end()):
             continue
         tokens.append((m.start(), m.end(), "visible_img", (m.group(1), m.group(2).strip())))
+        taken.append((m.start(), m.end()))
+
+    for start, end, latex in _iter_inline_paren_math_bare(text):
+        if _span_overlaps(taken, start, end):
+            continue
+        tokens.append((start, end, "math_omml", (latex,)))
+        taken.append((start, end))
+
+    for m in _BARE_DOLLAR_MATH_RE.finditer(text):
+        if _span_overlaps(taken, m.start(), m.end()):
+            continue
+        tokens.append((m.start(), m.end(), "math_omml", (m.group(1),)))
         taken.append((m.start(), m.end()))
 
     inline_pat = re.compile(r"(\*\*[^*]+?\*\*|`[^`]+?`)")
@@ -386,6 +549,21 @@ def _add_rich_content_to_paragraph(
                 run = paragraph.add_run(token[1:-1])
                 _set_run_font(run, "Consolas", 9)
                 run.font.color.rgb = RGBColor(0x33, 0x33, 0x33)
+        elif kind == "math_omml":
+            latex = payload[0]
+            if not _try_append_omml(paragraph, latex, display=False):
+                _add_inline_to_paragraph(paragraph, text[start:end], mono=mono)
+        elif kind == "math_omml_or_img":
+            latex, alt, src = payload[0], payload[1], payload[2]
+            if not _try_append_omml(paragraph, latex, display=False):
+                _embed_from_image_ref(
+                    alt,
+                    src,
+                    base_dir,
+                    paragraph=paragraph,
+                    image_max_w_in=image_max_w_in,
+                    image_max_h_in=image_max_h_in,
+                )
         else:
             alt, src = payload[0], payload[1]
             _embed_from_image_ref(
@@ -454,12 +632,7 @@ def _add_body_paragraph(
     p = doc.add_paragraph()
     p.paragraph_format.space_after = Pt(6)
     p.paragraph_format.line_spacing = 1.15
-    if (
-        _MD_IMAGE_RE.search(text)
-        or _HIDDEN_MD_IMAGE_COMMENT_RE.search(text)
-        or _INLINE_MATH_WITH_HIDDEN_IMG_RE.search(text)
-        or _INLINE_MATH_PAREN_WITH_HIDDEN_IMG_RE.search(text)
-    ):
+    if _line_has_embeddable_images(text):
         _add_rich_content_to_paragraph(
             p,
             text,
@@ -500,12 +673,7 @@ def _add_list_item(
         p = doc.add_paragraph()
         p.paragraph_format.left_indent = Inches(0.35)
     p.paragraph_format.space_after = Pt(3)
-    if (
-        _MD_IMAGE_RE.search(text)
-        or _HIDDEN_MD_IMAGE_COMMENT_RE.search(text)
-        or _INLINE_MATH_WITH_HIDDEN_IMG_RE.search(text)
-        or _INLINE_MATH_PAREN_WITH_HIDDEN_IMG_RE.search(text)
-    ):
+    if _line_has_embeddable_images(text):
         _add_rich_content_to_paragraph(
             p,
             text,
@@ -665,12 +833,16 @@ def _try_add_image(
 
 
 def _line_has_embeddable_images(line: str) -> bool:
-    return bool(
+    if (
         _MD_IMAGE_RE.search(line)
         or _HIDDEN_MD_IMAGE_COMMENT_RE.search(line)
         or _INLINE_MATH_WITH_HIDDEN_IMG_RE.search(line)
-        or _INLINE_MATH_PAREN_WITH_HIDDEN_IMG_RE.search(line)
-    )
+        or _BARE_DOLLAR_MATH_RE.search(line)
+    ):
+        return True
+    if _iter_inline_paren_math_with_img(line) or _iter_inline_paren_math_bare(line):
+        return True
+    return False
 
 
 def _add_paragraph_with_inline_images(
@@ -703,7 +875,10 @@ def convert_md_to_docx(
     *,
     image_max_w_in: float = _DEFAULT_IMAGE_MAX_W_IN,
     image_max_h_in: float = _DEFAULT_IMAGE_MAX_H_IN,
+    prefer_omml: bool = True,
 ) -> Document:
+    global _PREFER_OMML
+    _PREFER_OMML = bool(prefer_omml)
     doc = Document()
     # 默认正文样式
     try:
@@ -767,7 +942,7 @@ def convert_md_to_docx(
             _add_code_block(doc, code_lines)
             continue
 
-        # 块级公式：\[ ... \] + 可选 HTML 注释
+        # 块级公式：\[ ... \] + 可选 HTML 注释（OMML → PNG → 原文）
         if line.strip() == "\\[":
             flush_paragraph()
             i += 1
@@ -783,50 +958,67 @@ def convert_md_to_docx(
                 if cm:
                     hidden = (cm.group(1), cm.group(2).strip())
                     i += 1
-            if hidden and _formula_image_kind(*hidden):
-                ipath = _resolve_image_path(hidden[1], base_dir)
-                if ipath:
-                    _embed_from_image_ref(
-                        hidden[0],
-                        hidden[1],
-                        base_dir,
-                        doc=doc,
-                        image_max_w_in=image_max_w_in,
-                        image_max_h_in=image_max_h_in,
-                    )
-                    continue
-            _add_math_fallback_block(doc, ["\\[", *math_lines, "\\]"])
+            latex = "\n".join(ln.rstrip("\n") for ln in math_lines).strip()
+            _add_block_equation(
+                doc,
+                latex,
+                base_dir=base_dir,
+                hidden=hidden,
+                image_max_w_in=image_max_w_in,
+                image_max_h_in=image_max_h_in,
+                raw_fallback_lines=["\\[", *math_lines, "\\]"],
+            )
             continue
 
-        # 块级公式：$$ ... $$ + 可选 HTML 注释（Word 嵌 PNG；预览见 LaTeX 原文）
+        # 块级公式：$$ ... $$ + 可选 HTML 注释（OMML → PNG → 原文）
         if line.strip() == "$$":
             flush_paragraph()
             i += 1
-            math_lines: list[str] = []
+            math_lines = []
             while i < len(lines) and lines[i].strip() != "$$":
                 math_lines.append(lines[i])
                 i += 1
             if i < len(lines):
                 i += 1
-            hidden: tuple[str, str] | None = None
+            hidden = None
             if i < len(lines):
                 cm = _HIDDEN_MD_IMAGE_COMMENT_RE.match(lines[i].strip())
                 if cm:
                     hidden = (cm.group(1), cm.group(2).strip())
                     i += 1
-            if hidden and _formula_image_kind(*hidden):
-                ipath = _resolve_image_path(hidden[1], base_dir)
-                if ipath:
-                    _embed_from_image_ref(
-                        hidden[0],
-                        hidden[1],
-                        base_dir,
-                        doc=doc,
-                        image_max_w_in=image_max_w_in,
-                        image_max_h_in=image_max_h_in,
-                    )
-                    continue
-            _add_math_fallback_block(doc, math_lines)
+            latex = "\n".join(ln.rstrip("\n") for ln in math_lines).strip()
+            _add_block_equation(
+                doc,
+                latex,
+                base_dir=base_dir,
+                hidden=hidden,
+                image_max_w_in=image_max_w_in,
+                image_max_h_in=image_max_h_in,
+                raw_fallback_lines=math_lines,
+            )
+            continue
+
+        # 单行 $$ ... $$
+        strip = line.strip()
+        if strip.startswith("$$") and strip.endswith("$$") and len(strip) > 4:
+            flush_paragraph()
+            latex = strip[2:-2].strip()
+            i += 1
+            hidden = None
+            if i < len(lines):
+                cm = _HIDDEN_MD_IMAGE_COMMENT_RE.match(lines[i].strip())
+                if cm:
+                    hidden = (cm.group(1), cm.group(2).strip())
+                    i += 1
+            _add_block_equation(
+                doc,
+                latex,
+                base_dir=base_dir,
+                hidden=hidden,
+                image_max_w_in=image_max_w_in,
+                image_max_h_in=image_max_h_in,
+                raw_fallback_lines=[strip],
+            )
             continue
 
         # 独立 HTML 注释行（公式图 / mermaid 框图引用）
@@ -971,7 +1163,12 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument(
         "--no-math-render",
         action="store_true",
-        help="不自动调用 math_render（默认会先渲染 $ / $$ 公式为 PNG）",
+        help="不自动调用 math_render（默认会先渲染 $ / $$ 公式为 PNG，供 OMML 失败时回退）",
+    )
+    p.add_argument(
+        "--no-omml",
+        action="store_true",
+        help="不写入可编辑 Office Math，仅用 PNG/原文（旧行为）",
     )
     args = p.parse_args(argv)
 
@@ -995,6 +1192,7 @@ def main(argv: list[str] | None = None) -> int:
         base_dir=base,
         image_max_w_in=args.image_max_width_inches,
         image_max_h_in=args.image_max_height_inches,
+        prefer_omml=not args.no_omml,
     )
     out_path = Path(args.output).resolve()
     out_path.parent.mkdir(parents=True, exist_ok=True)

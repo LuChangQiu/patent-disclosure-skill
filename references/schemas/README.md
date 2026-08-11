@@ -5,6 +5,7 @@
 | `structure.schema.yaml` | 形状/构造 | `disclosure/utility_model/` | 实用新型 / 装置附图 → `structure_schema.json` → 笔记「结构说明」+ Canvas |
 | `appearance.schema.yaml` | 外观造型 | `disclosure/design/` | 外观设计 → `appearance_schema.json` → 笔记「外观要点」+ Canvas |
 | `figure_plan.schema.yaml` | 附图选用、排序与图际关联（`relates_to`） | 实用/外观成文只嵌 `use_in_disclosure: true` | 可选；解读不强依赖 |
+| `formula_plan.schema.yaml` | 发明公式选题 + 可算提纲 | 含公式时先写 `formula_plan.yaml`；范式见 `references/formulas/` | 一般不用 |
 | `design_lineart_brief.schema.yaml` | 外观**辅助**线稿描述（可选，默认关） | 用户回「是」且有参考图后生成；禁止纯文生图 | 一般不用 |
 | `structure_lineart_brief.schema.yaml` | 实用**结构辅助**线稿描述（可选，默认关） | 用户回「是」且有参考图 + Structure；轮廓与序号分层；禁止自创件号 | 一般不用 |
 | `evolution_backlog.schema.yaml` | 技能进化清单（模式 C） | 旁路产出 `outputs/evolution/EVOL-*.md`；人审前不改 prompts | 不用 |

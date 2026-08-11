@@ -5,7 +5,7 @@
 | 目录 | 内容 |
 |------|------|
 | **`crawl/`** | 国知局公布公告检索：`cnipa_epub_*.py`、`requirements-cnipa.txt` |
-| **`shared/`** | 公用：`docx/pptx/md` 转换、`mermaid`/`math`、`iteration_dialog_log`、`patent_type.py`、**可选** STEP（`cad_scan` / `step_to_views`）、**可选**外观辅助线稿（`design_lineart_gate`）、**可选**实用结构辅助线稿（`structure_lineart_gate`） |
+| **`shared/`** | 公用：`docx/pptx/md` 转换、`mermaid`/`math`/`math_to_omml`（OMML）、`formula_paradigms` / `check_formula_plan`、`iteration_dialog_log`、`patent_type.py`、**可选** STEP / 线稿门禁 |
 | **`patent_reader/`** | 专利通俗解读：`shared/` · `extract/` · `analyze/` · `vault/`（见该目录 README） |
 | **`oa/`** | 模式 D 审查答复：嵌入配置、sqlite-vec 入库/检索（见该目录 README） |
 
@@ -45,6 +45,24 @@ python tools/shared/cad_scan.py -r knowledge --json
 pip install -r tools/shared/requirements-step.txt   # 用户确认后
 python tools/shared/step_to_views.py --enable-step-parse -i a.step -o outputs/case/cad_views
 ```
+
+---
+
+## 发明公式范式（`shared/` + `references/formulas/`）
+
+| 脚本 / 文档 | 作用 |
+|-------------|------|
+| **`references/formulas/paradigms.yaml`** | 默认可扩展范式库 |
+| **`references/schemas/formula_plan.schema.yaml`** | 案件 `formula_plan.yaml` 合同 |
+| **`shared/formula_paradigms.py`** | `list` / `show` / `combos`（支持案件目录覆盖） |
+| **`shared/check_formula_plan.py`** | 校验选题 id、禁装饰音、数值例 |
+
+```bash
+python tools/shared/formula_paradigms.py list
+python tools/shared/check_formula_plan.py -i outputs/case/formula_plan.yaml
+```
+
+成文纪律见 **`prompts/disclosure/invention/disclosure_builder.md` §7.7**。
 
 ## 外观辅助线稿（`shared/`，可选，默认关闭）
 
@@ -154,17 +172,25 @@ Windows 上若仅装 Node 未执行 `npm install`，脚本会通过 `npx -y @mer
 
 ---
 
-## math_render.py — LaTeX 公式 → PNG
+## math_to_omml.py — LaTeX → 可编辑 Office Math
 
-将 Markdown 中的 **LaTeX 公式**（``$...$`` / ``\\(...\\)`` 行内；``$$...$$`` / ``\\[...\\]`` 块级）用 **matplotlib mathtext** 渲染为 PNG；**保留 LaTeX 原文**，图片引用写入 HTML 注释 ``<!-- ![...](math_figures/...) -->``（Markdown 预览不显示图），供 **`md_to_docx.py`** 嵌入 Word。
+``latex2mathml`` → MathML → Word ``m:oMath`` / ``m:oMathPara``。不依赖本机 TeX。由 **`md_to_docx.py`** 默认调用。
 
-**Mermaid 框图**：``mermaid_render.py`` **保留** `` ```mermaid`` 源码，并追加 ``<!-- ![图示 n](mermaid_figures/...) -->``（预览隐藏图引用，Word 仍大图嵌入）。
+```bash
+pip install latex2mathml   # 已写入根目录 requirements.txt
+```
 
-**mathtext 兼容**：渲染前自动将常见 LaTeX 简写映射为 mathtext 符号（如 ``\ge``→``\geq``、``\le``→``\leq``、``\land``→``\wedge``）；块级式内**换行压成一行**、``\tag{1}`` 转为式末 ``(1)``；仍无法解析的公式保留原文。
+---
 
-**失败降级**：某一公式渲染失败时**不中断**——该处**保留原文**（``$...$`` 或 ``$$...$$``）；``md_to_docx`` 对未转换的 ``$$`` 块以 **Consolas 代码块**写入 Word。
+## math_render.py — LaTeX 公式 → PNG（OMML 回退）
 
-**Word 版式**：**全部公式图**（行内与块级式 (1) 等）在 Word 中统一按约 **0.17 英寸**高度嵌入；**mermaid 框图/流程图**仍按 **5.5×8.2 英寸**上限等比嵌入。块级 PNG 默认与行内同字号（10.5pt）渲染，避免块级式显得过粗过大。
+将 Markdown 中的 **LaTeX 公式**用 **matplotlib mathtext** 渲染为 PNG；**保留 LaTeX 原文**，图片引用写入 HTML 注释，供 **`md_to_docx.py`** 在 **OMML 失败时**嵌入。
+
+**Mermaid 框图**：``mermaid_render.py`` **保留** `` ```mermaid`` 源码，并追加 ``<!-- ![图示 n](mermaid_figures/...) -->``。
+
+**mathtext 兼容**：``\ge``→``\geq`` 等；``\tag{1}`` 转式末 ``(1)``。
+
+**Word 主路径**：默认 **OMML 优先**；PNG 仅回退。``--no-omml`` 可强制旧行为。
 
 ### 依赖
 
@@ -195,12 +221,13 @@ python3 tools/shared/math_render.py -i draft.md -o out.md --assets-dir math_figu
 pip install -r requirements.txt
 ```
 
-依赖为 `python-docx`（见仓库根目录 `requirements.txt`）。
+依赖为 `python-docx` + 可选 `latex2mathml`（见仓库根目录 `requirements.txt`）。缺 `latex2mathml` 时自动回退 PNG/原文。
 
 ### 用法
 
 ```bash
 python3 tools/shared/md_to_docx.py --input path/to/交底书.md --output path/to/交底书.docx
+python3 tools/shared/md_to_docx.py -i a.md -o a.docx --no-omml   # 仅 PNG/原文
 ```
 
 图片 `![](相对路径.png)`：默认相对 **Markdown 文件所在目录**；也可指定根目录：
@@ -230,7 +257,7 @@ python3 tools/shared/md_to_docx.py -i a.md -o a.docx --image-max-width-inches 6 
 | `> ` | 左缩进引用 |
 | `---` 等 | 浅色分隔线 |
 | `![](path)` | 嵌入图片（路径需存在；默认宽/高上限内等比缩放；公式图与正文混排） |
-| `$` / `\\(...\\)` / `$$` / `\\[...\\]` LaTeX | 默认先 **`math_render`** 转 PNG（注释隐藏引用）；失败则 **原文**写入 Word |
+| `$` / `\\(...\\)` / `$$` / `\\[...\\]` LaTeX | **优先 OMML（可编辑公式）** → 失败则 **PNG** → 再失败则 **原文**；``--no-omml`` 跳过 OMML |
 
 **未完整支持**：复杂嵌套列表、HTML 块、**未预渲染的** mermaid 围栏（仍为代码块）、脚注、任务列表等。定稿前请运行 **`mermaid_render.py`**；若仅用外部工具导出 PNG，可直接写 `![](...)`。
 

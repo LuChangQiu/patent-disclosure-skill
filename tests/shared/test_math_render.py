@@ -24,6 +24,34 @@ _SCORE_BLOCK = (
 
 
 class MathRenderTests(unittest.TestCase):
+    def test_inline_paren_with_nested_parens(self) -> None:
+        """``\\(...\\)`` 内含 ``\\max(...)`` 时须整段匹配，不能露出转义符。"""
+        try:
+            import matplotlib  # noqa: F401
+        except ImportError:
+            self.skipTest("matplotlib not installed")
+        from math_render import iter_inline_paren_spans, render_markdown_math
+
+        sample = (
+            r"分项：\(Y_{ij}=\min(1,\,A/\max(\varepsilon,b))\)；"
+            r"\(Z_{ij}=(1-g)\cdot b\)。"
+        )
+        spans = iter_inline_paren_spans(sample)
+        self.assertEqual(len(spans), 2)
+        self.assertIn(r"\max(\varepsilon,b)", spans[0][2])
+
+        out_dir = ROOT / "tmp"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        new_md, ok, failed = render_markdown_math(
+            sample + "\n",
+            out_md_path=out_dir / "_math_nested_paren.md",
+            assets_rel="_math_nested_paren_figs",
+        )
+        self.assertGreaterEqual(ok, 2)
+        self.assertEqual(failed, 0)
+        self.assertIn("公式·行内", new_md)
+        self.assertEqual(new_md.count("<!-- ![公式·行内]"), 2)
+
     def test_block_and_inline(self) -> None:
         try:
             import matplotlib  # noqa: F401

@@ -37,22 +37,22 @@ from pathlib import Path
 
 
 def _local_mmdc() -> tuple[list[str], bool] | None:
-    """``tools/npm install`` 后可用 ``node_modules/.bin/mmdc``，避免每次 npx 拉包。"""
+    """``tools/npm install`` 或 ``tools/shared`` 下本地 ``mmdc``，避免每次 npx 拉包。"""
     here = Path(__file__).resolve().parent
-    if sys.platform == "win32":
-        cand = here / "node_modules" / ".bin" / "mmdc.cmd"
-    else:
-        cand = here / "node_modules" / ".bin" / "mmdc"
-    if cand.is_file():
-        return [str(cand)], False
+    bin_name = "mmdc.cmd" if sys.platform == "win32" else "mmdc"
+    for root in (here, here.parent):
+        cand = root / "node_modules" / ".bin" / bin_name
+        if cand.is_file():
+            return [str(cand)], False
     return None
 
 
 def _find_mmdc_invocation() -> tuple[list[str], bool]:
     """
     返回 (argv 前缀, use_shell)。
-    Windows 上 npx 常为 .ps1，无独立 .exe，需 shell=True 调用 ``npx ...``。
-    PATH 中的 ``mmdc`` 一般为 npm 全局安装的官方 CLI。
+    优先本地 ``node_modules/.bin/mmdc``；其次 PATH 上的 ``mmdc``；
+    再退回 ``npx -y @mermaid-js/mermaid-cli``（入口即 CLI，勿再追加 argv「mmdc」）。
+    Windows 优先 ``npx.cmd`` + ``shell=False``，避免 ``shlex.quote`` 单引号被 cmd 原样带入路径。
     """
     local = _local_mmdc()
     if local:
@@ -61,8 +61,11 @@ def _find_mmdc_invocation() -> tuple[list[str], bool]:
     if mmdc and Path(mmdc).suffix.lower() not in (".ps1",):
         return [mmdc], False
     if sys.platform == "win32":
-        return ["npx", "-y", "@mermaid-js/mermaid-cli", "mmdc"], True
-    return ["npx", "-y", "@mermaid-js/mermaid-cli", "mmdc"], False
+        npx = shutil.which("npx.cmd") or shutil.which("npx")
+        if npx and Path(npx).suffix.lower() not in (".ps1",):
+            return [npx, "-y", "@mermaid-js/mermaid-cli"], False
+        return ["npx", "-y", "@mermaid-js/mermaid-cli"], True
+    return ["npx", "-y", "@mermaid-js/mermaid-cli"], False
 
 
 def _mmdc_extra_args(

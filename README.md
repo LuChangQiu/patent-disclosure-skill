@@ -2,7 +2,7 @@
 
 # 中国专利.skill
 
-> 中国专利技能：交底书（发明/实用新型/外观）编写，公开专利通俗解读，政策/审查动向嗅探，审查通知自动答复。
+> 专利点挖掘与交底书（发明/实用/外观）编写，通俗解读专利，嗅探政策动向，辅助审查答复。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](https://www.python.org/)
