@@ -7,6 +7,7 @@
 | **`crawl/`** | 国知局公布公告检索：`cnipa_epub_*.py`、`requirements-cnipa.txt` |
 | **`shared/`** | 公用：`docx/pptx/md` 转换、`mermaid`/`math`、`iteration_dialog_log`、`patent_type.py`、**可选** STEP（`cad_scan` / `step_to_views`）、**可选**外观辅助线稿（`design_lineart_gate`）、**可选**实用结构辅助线稿（`structure_lineart_gate`） |
 | **`patent_reader/`** | 专利通俗解读：`shared/` · `extract/` · `analyze/` · `vault/`（见该目录 README） |
+| **`oa/`** | 模式 D 审查答复：嵌入配置、sqlite-vec 入库/检索（见该目录 README） |
 
 技能主流程以 `SKILL.md` 与 `prompts/` 为准。调用时请使用子目录完整路径（如 `tools/crawl/cnipa_epub_search.py`、`tools/shared/mermaid_render.py`）。
 
@@ -347,6 +348,20 @@ python tools/patent_reader/extract/fetch_patent_pdf.py --pub CN… -o RUN
 pip install -r tools/crawl/requirements-cnipa.txt && python -m playwright install chromium
 python tools/patent_reader/extract/fetch_design_views.py --pub CN…S -o RUN
 ```
+
+---
+
+## 审查答复案例库（`oa/`，可选，默认关闭）
+
+| 脚本 | 作用 |
+|------|------|
+| **`oa/config.py`** | `recommend` / `skip-vector` / `enable-vector` / `status` / `set` |
+| **`oa/pdf_text.py`** | 审查通知书/答复 PDF→文本（pymupdf） |
+| **`oa/ingest_case.py`** | 脱敏入库；无向量亦可；支持 `--pdf` |
+| **`oa/search_cases.py`** | 标签检索 + 可选向量；失败回退；支持 `--pdf` |
+| **`oa/rebuild_vectors.py`** | 用户确认后扫描 oa/cases 重建向量 |
+
+依赖：`pip install -r tools/oa/requirements-oa.txt`。说明见 **`tools/oa/README.md`**、**`docs/oa/README.md`**。
 
 ---
 
