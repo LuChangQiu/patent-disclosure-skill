@@ -9,8 +9,10 @@ tmp/
 examples/example_patent_reader/**
 !examples/example_patent_reader/README.md
 
-# 国知局抓取结果缓存（tools/）
+# 国知局抓取结果缓存
 tools/_last_result*.html
+tools/crawl/_last_result*.html
+tools/crawl/_last_home.html
 
 # Python / tools
 tools/node_modules/
@@ -19,6 +21,8 @@ __pycache__/
 .pyo
 .venv/
 venv/
+.venv-step310/
+tools/shared/.venv-step310/
 *.egg-info/
 
 # math_render 联调产物（tests/test_math_render.py 运行时生成）

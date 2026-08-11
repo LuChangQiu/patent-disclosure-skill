@@ -1,0 +1,6 @@
+# CadQuery / OCCT：可选 STEP → 多视角图（与仓库根 requirements.txt 独立；默认不安装）
+# 体积较大；仅在用户回复「是」确认开启 STEP 解析后由 Agent 延迟执行：
+#   pip install -r tools/shared/requirements-step.txt
+# 注意：CadQuery 官方轮子常见于 Python 3.9–3.12；3.13+ 可能暂无发行版（可用 cad_scan 仍测扫描反问）。
+cadquery>=2.4.0
+cairosvg>=2.7.0
