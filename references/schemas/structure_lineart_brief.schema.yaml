@@ -1,0 +1,72 @@
+# StructureLineartBrief — 实用新型结构辅助线稿描述合同（可选）
+
+仅用于**实用新型**交底辅助：用户确认开启后，基于已有结构图/实拍生成黑白线稿草稿，并按 **StructureSchema.parts** 准备部件序号引出。  
+**默认关闭**；**禁止**无参考图纯文生图；**不是**申报终稿。  
+与外观 `design_lineart_brief` **分文件**，勿混用。
+
+落盘：案件目录 **`structure_lineart_brief.yaml`**（与 `structure_schema.*` / `figure_plan.yaml` 同级）。
+
+```yaml
+$schema: structure_lineart_brief
+version: 1
+enabled: true                 # 须用户回复「是」后才为 true
+patent_type: utility_model
+structure_ref: structure_schema.yaml
+figure_plan_ref: figure_plan.yaml
+product_name: ""
+structure_summary: ""         # 与 StructureSchema 对齐的一句总装描述
+parts_legend:                 # 须抄自 structure.parts（跨图同一套件号）
+  - id: "1"
+    name: ""
+callout_mode: overlay         # overlay（推荐）| in_prompt | contour_only
+forbid:
+  - 无依据的内部剖视臆造
+  - 品牌 LOGO / 广告文案
+  - 彩色渲染 / 阴影棚拍风
+  - 与 structure.parts 不一致的件号
+uncertain: []                 # 看不清的件不得画死序号
+views:
+  - view_name: 总装立体图
+    source_figs: [1]
+    source_paths: []          # 至少一张存在的参考图
+    visible_part_ids: ["1", "2"]  # 本视应标出的件号；须 ⊆ parts_legend
+    relates_hint: []
+    lineart_goal: ""          # 本视线稿强调的构造轮廓一句
+    gen_prompt: ""            # 轮廓层提示；须含「黑白线稿」「参照附图」
+    output_path: ""           # 如 lineart_assist/fig1_structure_lineart.png
+    callout_output_path: ""   # 可选；叠号后路径，默认在 output_path 旁加 _callouts
+```
+
+## 必填
+
+- `enabled: true`（仅用户确认后）  
+- `structure_ref`、`figure_plan_ref`  
+- `parts_legend`：至少 1 条，且与 StructureSchema `parts` 的 `id`/`name` 一致（允许为本视子集，但不得改号改名）  
+- `views`：至少 1 条；每条 `source_paths` 非空且文件存在  
+- `structure_summary` 或非空 `parts_legend`
+
+## 分层纪律（硬）
+
+1. **轮廓层**：基于参考图生成无场景黑白线稿；默认**不要**在生图阶段乱标序号（`callout_mode: overlay`）。  
+2. **序号层**：用 `parts_legend` / `visible_part_ids` 做引出线与件号叠图（宿主标注工具、SVG/图层或人工）；件号**必须**来自 StructureSchema，禁止生图模型自创编号。  
+3. `callout_mode: in_prompt`：仅当宿主无法叠图时退而求其次；仍须在 gen_prompt 中**逐条列出**可见件号与名称，并自检与 schema 一致。  
+4. `callout_mode: contour_only`：只出无号轮廓；正文靠部件表指认（可接受，但优先 overlay）。
+
+## 硬禁止
+
+- 无任何 `source_paths` 仍生成图片（纯文生图）  
+- 为 `uncertain` 中的部件画出确定序号  
+- 跨图同一部件使用不同件号  
+- 将本辅助线稿写成申报终稿或覆盖原始结构图证据地位  
+- 套用 `design_lineart_*` 合同/门禁处理实用新型（反之亦然）
+
+## 与 figure_plan
+
+生成后追加条目建议：
+
+- `kind: lineart`  
+- `role`: assembly / detail / exploded（对齐源图）  
+- `use_in_disclosure`: **默认 false**  
+- `reason`: `AI 辅助结构线稿（非申报终稿；件号对齐 StructureSchema）`  
+- `relates_to`: 指向源图 `same_state` / `detail_of`  
+- `covers`: 可含件号字符串（如 `"1"`, `"基板"`）便于正文对照  

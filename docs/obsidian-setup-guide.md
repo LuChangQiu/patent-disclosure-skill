@@ -5,7 +5,7 @@
 1. **你需要做的**：在 Windows 安装 Obsidian、（可选）从社区插件市场装增强插件。  
 2. **技能已自动做的**：CSS 样式、核心插件 Bases、索引 / Bases 文件、关系图配色——**解读入库时写入，用户不必再装、不必再跑初始化脚本。**
 
-相关文件：`prompts/obsidian_plugin_guide.md`、`INSTALL.md`。
+相关文件：`prompts/reader/obsidian_plugin_guide.md`、`INSTALL.md`。
 
 ---
 
@@ -26,7 +26,7 @@
 ```powershell
 $env:PATENT_READER_OBSIDIAN_VAULT = "D:\你的库路径"
 # 可选持久化：
-python tools/patent_reader/check_obsidian_env.py --set "D:\你的库路径" --setx
+python tools/patent_reader/vault/check_obsidian_env.py --set "D:\你的库路径" --setx
 ```
 
 ### 1.3 与本技能
@@ -45,7 +45,7 @@ python tools/patent_reader/check_obsidian_env.py --set "D:\你的库路径" --se
 | CSS 片段 `patent-reader` | 复制到 `.obsidian/snippets/` 并启用；笔记带 `cssclasses: patent-reader` |
 | 核心插件 **Bases** | 写入 `.obsidian/core-plugins.json` 开启 |
 | `patents.base`、解读索引、术语索引 | 写入 `Research/Patents/`（及术语目录） |
-| 关系图彩色 Groups | 写入 `.obsidian/graph.json`（无需社区插件）；过滤器排除图片、`.json`、权项锚点/说明书段落旁路 |
+| 关系图彩色 Groups | 写入 `.obsidian/graph.json`（无需社区插件）；过滤器**只排除**图片、`.json`、权项锚点/说明书段落旁路（**不要**用 `file:_解读_` 收成只显示解读笔记；解读用 Groups 着色） |
 
 Callout 观感（自动生效）：紫=著录/权要，绿=应用场景，橙=推测/公开线索，蓝=附图与 tip。
 

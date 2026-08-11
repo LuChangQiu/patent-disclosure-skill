@@ -1,0 +1,55 @@
+# DesignLineartBrief — 外观辅助线稿描述合同（可选）
+
+仅用于**外观设计**交底辅助：在用户确认开启后，先固化「按图可核验的造型描述」，再基于**已有实物/参考图**生成黑白线稿草稿。  
+**默认关闭**；**禁止**无参考图的纯文生图；**不是**申报终稿。
+
+落盘：案件目录 **`design_lineart_brief.yaml`**（与 `appearance_schema.*` / `figure_plan.yaml` 同级，常见 `outputs/{案件标识}/`）。
+
+```yaml
+$schema: design_lineart_brief
+version: 1
+enabled: true                 # 须用户回复「是」后才为 true；默认流程勿写本文件
+patent_type: design
+appearance_ref: appearance_schema.yaml
+figure_plan_ref: figure_plan.yaml
+product_name: ""
+overall_shape: ""             # 与 AppearanceSchema 对齐，可略作线稿强调改写
+design_points: []             # 须在参考图上可看见
+forbid:                       # 生成时硬禁止
+  - 内部结构 / 电路 / 受力
+  - 品牌 LOGO / 广告文案
+  - 无依据的背面或底面臆造
+  - 彩色渲染 / 阴影棚拍风
+uncertain: []                 # 参考图看不清、不得画死的特征
+views:                        # 每一视必须绑定至少一张已有图
+  - view_name: 立体图         # 对齐 appearance.views.name 或 figure_plan.covers
+    source_figs: [1]          # figure_plan 中 use_in_disclosure 或材料图的 fig
+    source_paths: []          # 绝对或相对路径；校验时必须存在
+    relates_hint: []          # 可选；抄自 figure_plan.relates_to（same_state/alternate_view/detail_of）
+    lineart_goal: ""          # 本视线稿要强调的可见轮廓一句
+    gen_prompt: ""            # 供出图用的完整提示（中英均可）；须含「黑白线稿」「参照附图」
+    output_path: ""           # 计划写出路径，如 lineart_assist/view_perspective_lineart.png
+```
+
+## 必填
+
+- `enabled: true`（仅用户确认后）  
+- `appearance_ref`、`figure_plan_ref`  
+- `views`：至少 1 条；每条 `source_paths` 非空且文件存在  
+- `overall_shape` 或非空 `design_points`  
+
+## 硬禁止
+
+- 无任何 `source_paths` 仍生成图片（纯文生图）  
+- 为 `uncertain` 中的特征画出确定线条并当作设计要点  
+- 将本辅助线稿默认标为申报终稿或覆盖原始实拍证据地位  
+
+## 与 figure_plan
+
+生成后追加条目建议：
+
+- `kind: lineart`  
+- `role`: 与源图对应（`perspective` / `ortho` / `detail`）或 `reference`  
+- `use_in_disclosure`: **默认 false**（辅助）；用户明确要求入文后再改 true  
+- `reason`: `AI 辅助线稿（非申报终稿）`  
+- `relates_to`: 指向源实拍/参考图的 `same_state` 或 `alternate_view`  
