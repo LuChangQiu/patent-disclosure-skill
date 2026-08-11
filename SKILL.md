@@ -1,9 +1,9 @@
 ---
 name: patent-disclosure-skill
-description: "中国专利：从项目文档挖掘专利点并生成可交付技术交底书（支持发明/实用新型/外观；可选 STEP 多视角解析，默认关闭；可选外观/实用结构辅助线稿，默认关闭；查新、脱敏成文、自检与迭代）；或将已有专利解读为通俗笔记与 Obsidian 知识图谱。| China patents: draft disclosures (invention / utility model / design; optional STEP views; optional design/structure lineart assists) or read patents into plain notes and an Obsidian graph."
-version: "3.1.0"
+description: "中国专利：交底书（发明/实用新型/外观；可选 STEP/辅助线稿）与通俗解读；可选模式 C 技能进化旁路（政策雷达，默认关，人审后才改技能）。| China patents: disclosures + plain-language reader; optional mode C skill-evolution radar (off by default, human confirm before edits)."
+version: "3.2.0"
 user-invocable: true
-argument-hint: "[可选：项目路径 / 技术主题 / 专利号或 PDF 路径]"
+argument-hint: "[可选：项目路径 / 技术主题 / 专利号或 PDF 路径 / 技能进化]"
 allowed-tools: Read, Write, Edit, Grep, Glob, WebSearch, Bash
 ---
 
@@ -15,8 +15,10 @@ allowed-tools: Read, Write, Edit, Grep, Glob, WebSearch, Bash
 |------|--------|--------|
 | **A · 交底书编写** | 挖专利点 → 查新 → 成稿 → 迭代 | `prompts/disclosure/`（类型子目录见下） |
 | **B · 专利通俗解读** | 公开号 / PDF / 全文 → 通俗笔记 + 图谱 | `prompts/reader/patent_plain_reader.md` |
+| **C · 技能进化旁路** | 政策/审查动向雷达 → 带时间戳清单 → **人审后**才改技能 | `prompts/evolution/`（**默认关**，须显式触发） |
 
-提供**专利号或专利全文/PDF**且意图为「读懂」时 → **优先模式 B**，**不**默认跑交底书 Step 1–8。
+提供**专利号或专利全文/PDF**且意图为「读懂」时 → **优先模式 B**，**不**默认跑交底书 Step 1–8。  
+**禁止**因写交底/读专利自动进入模式 C。
 
 ## 目录约定（薄路由）
 
@@ -27,10 +29,13 @@ prompts/disclosure/          # 交底公共流程
   design/                    # 外观设计：挖点 / builder / template（单独 md）
 prompts/reader/              # 通俗解读 + type_hooks
 prompts/shared/              # 写读共用：Structure / Appearance 填表 + figure_plan + 外观/实用辅助线稿
-references/schemas/          # structure / appearance / figure_plan / design_lineart_brief / structure_lineart_brief
+prompts/evolution/           # 模式 C：政策雷达 / 进化清单（旁路，默认关）
+references/schemas/          # structure / appearance / figure_plan / lineart / evolution_backlog
 tools/crawl/                 # 国知局等爬取
 tools/shared/                # docx/mermaid/专利类型/可选 STEP / 可选辅助线稿门禁
 tools/patent_reader/         # 解读工具：shared/ | extract/ | analyze/ | vault/
+outputs/evolution/           # 模式 C 清单默认落盘（gitignore）
+docs/evolution/              # 仅用户确认「沉淀」后可复制提交
 ```
 
 ## 环境与约定
@@ -45,6 +50,7 @@ tools/patent_reader/         # 解读工具：shared/ | extract/ | analyze/ | va
 - **外观辅助线稿（可选，默认关）**：有产品图时可反问；用户 **是** 后按 `shared/design_lineart_assist.md`（先 YAML 描述 + 多视联读，再**参考图**出线稿）；无图禁止；非申报终稿；**不**画部件序号。
 - **实用结构辅助线稿（可选，默认关）**：有结构图且缺干净线稿时可反问；用户 **是** 后按 `shared/structure_lineart_assist.md`（对齐 `structure_schema.parts`；轮廓与序号分层，推荐 overlay；禁止自创件号）；无图禁止；非申报终稿。**勿**与外观 `design_lineart_*` 混用。
 - **解读 + Obsidian**：强烈推荐配置库；见 **`docs/obsidian-setup-guide.md`**。
+- **技能进化（可选，默认关）**：显式触发后走模式 C；清单含 **观点↔信源 URL 表**；未人审确认前**不**改技能正文。
 
 ---
 
@@ -53,6 +59,7 @@ tools/patent_reader/         # 解读工具：shared/ | extract/ | analyze/ | va
 - **交底书**：专利挖掘、交底书、查新、实用新型、外观设计等；`/patent-disclosure-skill`、`/交底书`。
 - **通俗解读**：读专利、公开号 / PDF 且目标为理解；`/patent-read`、`/读专利`。
 - **交底书迭代**：已有交底上补材料/纠错 → `disclosure/iteration_context.md` → `merger` / `correction_handler`；另存时间戳稿。
+- **技能进化旁路**：技能进化、政策雷达、审查政策更新、自进化、`/patent-evolve`、`/技能进化` → **仅此时**进入模式 C。
 
 ---
 
@@ -60,7 +67,7 @@ tools/patent_reader/         # 解读工具：shared/ | extract/ | analyze/ | va
 
 | 任务 | 建议方式 |
 |------|----------|
-| 加载分步指令 | **`Read`** → `prompts/disclosure|reader|shared/…`（完整子路径） |
+| 加载分步指令 | **`Read`** → `prompts/disclosure|reader|shared|evolution/…`（完整子路径） |
 | Word / PPT → Markdown | `tools/shared/docx_to_md.py` / `pptx_to_md.py` |
 | CAD 扫描 / STEP→多视图（可选，默认关） | `tools/shared/cad_scan.py`；用户确认后 `step_to_views.py --enable-step-parse` |
 | 外观辅助线稿（可选，默认关） | `prompts/shared/design_lineart_assist.md`；门禁 `design_lineart_gate.py`（须参考图，禁止纯文生图） |
@@ -69,6 +76,7 @@ tools/patent_reader/         # 解读工具：shared/ | extract/ | analyze/ | va
 | 交底定稿 | 发明：`tools/shared/mermaid_render.py` → md+docx；实用/外观：按各类型 builder |
 | 专利通俗解读 | **`Read`** `reader/patent_plain_reader.md`；实用/外观另 Read `reader/type_hooks.md` + `shared/fill_*` |
 | 解读取 PDF / 入库 | `tools/patent_reader/extract/fetch_patent_pdf.py`；`…/vault/write_patent_obsidian_note.py` 等（见 `tools/patent_reader/README.md`） |
+| 技能进化雷达 | **`Read`** `evolution/intake.md` → `research.md`（WebSearch + 官网抓取）→ `emit_backlog.md`；确认后 `apply_after_confirm.md` |
 
 ---
 
@@ -101,6 +109,18 @@ tools/patent_reader/         # 解读工具：shared/ | extract/ | analyze/ | va
 | 取 PDF | `tools/patent_reader/extract/fetch_patent_pdf.py` |
 | 入库 | `tools/patent_reader/vault/write_patent_obsidian_note.py` |
 
+### 技能进化旁路（模式 C）
+
+| 步骤 | 文件 |
+|------|------|
+| 总则 | `prompts/evolution/guardrails.md` |
+| 录入 | `prompts/evolution/intake.md` |
+| 检索/抓取 | `prompts/evolution/research.md` |
+| 出清单 | `prompts/evolution/emit_backlog.md` |
+| 确认后改技能 | `prompts/evolution/apply_after_confirm.md`（须人审） |
+| 交底交付低频提示 | `prompts/evolution/soft_nudge.md`（可选一句，不入正文） |
+| 合同 | `references/schemas/evolution_backlog.schema.yaml` |
+
 ---
 
 ## 模式 A · 交底书主流程
@@ -127,6 +147,22 @@ tools/patent_reader/         # 解读工具：shared/ | extract/ | analyze/ | va
 
 ---
 
+## 模式 C · 技能进化旁路（默认关）
+
+1. **`Read`** `evolution/guardrails.md` → `intake.md`  
+2. **`Read`** `evolution/research.md`：WebSearch + 打开国知局等官网正文；默认近 12 个月  
+3. **`Read`** `evolution/emit_backlog.md`：写入 `outputs/evolution/EVOL-YYYYMMDD-HHMM.md`  
+   - **主表必为「观点 ↔ 信源 URL」**（一行一观点，附准确 `https://` 链接）  
+   - 证据 C（自媒体等）不得单独支撑「改技能」建议  
+4. 展示人审闸门；**等待**「全部采纳 / 采纳 E… / 全部搁置 / 沉淀到 docs/evolution/」  
+5. 仅确认采纳后 → **`Read`** `apply_after_confirm.md` → 最小改动 prompts，并写 `.status.md`  
+
+交底定稿交付后的**可选一句**提示见 `evolution/soft_nudge.md`（低频；**不**等于自动进入本模式）。
+
+**与 A/B 互斥**：进化旁路不写交底书、不做专利解读成稿。
+
+---
+
 ## 迭代模式（交底书 · 摘要）
 
 - 补材料 / 扩展：`iteration_context` → `merger` → 新时间戳稿（实用/外观若改图或主题须同步 **`figure_plan`**）  
@@ -137,7 +173,7 @@ tools/patent_reader/         # 解读工具：shared/ | extract/ | analyze/ | va
 ## Agent 自用工作流检查清单
 
 ```
-□ 已区分模式 A / B / 迭代，未混跑
+□ 已区分模式 A / B / C / 迭代，未混跑
 □ 交底未指定类型时已默认发明；材料偏实用/外观已按需反问
 □ Step 3–4 / Step 7 已 Read 对应类型子目录 md（非发明套用实用/外观）
 □ 查新 cnipa 已带与案件一致的 --type；abstract 必用
@@ -147,5 +183,7 @@ tools/patent_reader/         # 解读工具：shared/ | extract/ | analyze/ | va
 □ 实用若开启结构辅助线稿：有用户「是」、有参考图+Structure、经 structure_lineart_gate；件号对齐 parts；优先 overlay；未自创件号；辅助条默认不入正文
 □ 迭代改材料/主题时已重评 figure_plan（含图际关联）
 □ 解读实用/外观：公开号种类码或 patent_type.py / fetch 状态已判别类型，并 Read type_hooks + 共用 schema（用户未口头声明也可）
-□ 路径使用 prompts/disclosure|reader|shared 与 tools/crawl|shared|patent_reader/{extract,analyze,vault,shared}
+□ 模式 C：已显式触发；清单含观点↔URL 主表；未确认前未改技能；确认后才 apply
+□ 交底定稿交付：已按 evolution/soft_nudge 判断是否加低频一句（未每次必出、未写入正文）
+□ 路径使用 prompts/disclosure|reader|shared|evolution 与 tools/crawl|shared|patent_reader/{extract,analyze,vault,shared}
 ```

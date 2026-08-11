@@ -15,7 +15,7 @@
 定稿后还要**多轮补材料、纠错**并留下修改追溯？<br>
 公开专利晦涩难懂，想**快速看懂权要与落地语境**？
 
-[初衷](#初衷) · [运行效果](#运行效果) · [支持作者](#支持作者) · [两种用法](#两种用法) · [功能特性](#功能特性) · [使用](#使用) · [示例](#示例) · [参考文档](#参考文档) · [安装说明](INSTALL.md) · [技能入口](SKILL.md)
+[初衷](#初衷) · [运行效果](#运行效果) · [支持作者](#支持作者) · [两种用法](#两种用法) · [功能特性](#功能特性) · [示例](#示例) · [参考文档](#参考文档) · [安装说明](INSTALL.md) · [技能入口](SKILL.md)
 
 </div>
 
@@ -160,6 +160,16 @@
 </tbody>
 </table>
 
+怎么开口：自然语言即可（专利挖掘、交底书、查新等），或 `/交底书`、`/patent-disclosure-skill`；尽量带上**项目路径或技术主题**，并点明类型（未指定默认**发明**）。
+
+| 类型 | 典型场景 | 触发示例 |
+|------|----------|----------|
+| **发明** | 方法 / 系统 / 算法流程 | 「按发明写交底」「项目路径 …」 |
+| **实用新型** | 形状、构造、连接与装配 | 「实用新型」「一种…装置/结构」 |
+| **外观设计** | 外形、图案、色彩或其结合 | 「外观设计」「设计说明 / 六视图」 |
+
+已有交底上补材料或纠错时，按 `merger.md` / `correction_handler.md` 另存新稿（实用/外观改图或主题时同步 `figure_plan`）。细则见 [SKILL.md](SKILL.md)、`prompts/disclosure/intake.md`。
+
 ### 专利通俗解读
 
 **强烈推荐安装 Obsidian**：索引、Canvas 知识图谱、术语网与 callout 配色依赖库内呈现，才能发挥本模式的完整体验。安装与可选社区插件见 [docs/obsidian-setup-guide.md](docs/obsidian-setup-guide.md)。
@@ -180,34 +190,13 @@
 </tbody>
 </table>
 
----
+怎么开口：读专利、专利解读、`/读专利`、`/patent-read`，并给出**公开号或 PDF 路径**。配置库环境变量 `PATENT_READER_OBSIDIAN_VAULT` 体验更完整；无库时可降级到 `outputs/patent_reader/`。流程见 [tools/patent_reader/README.md](tools/patent_reader/README.md)、[SKILL.md](SKILL.md)。
 
-## 使用
+### 政策感知与技能自进化（可选）
 
-### 专利交底书编写
+审查指南、智能审查口径一变，交底写法很容易「还按老习惯」。需要时可以说一声「技能进化 / 政策雷达」：联网看看国知局等官网**近期政策与审查动向**，把观点和原文链接整理成**参考清单**（默认 `outputs/evolution/EVOL-*.md`；确认沉淀后再拷到 `docs/evolution/`），帮你判断技能该不该跟、怎么跟。也可 `/patent-evolve`、`/技能进化`。默认不开；你点头确认前，**不会**擅自改交底/解读流程。细则见 [SKILL.md](SKILL.md)「模式 C」与 `prompts/evolution/`。
 
-在 Agent 中用自然语言即可，例如：专利挖掘、专利点、**技术交底书**、查新、现有技术对比；斜杠如 `/patent-disclosure-skill`、`/交底书`。
-
-建议说明 **项目路径** 或 **技术主题**，并尽量点明 **专利类型**（未指定时默认**发明**）：
-
-| 类型 | 典型场景 | 触发示例 |
-|------|----------|----------|
-| **发明** | 方法 / 系统 / 算法流程（调度、检索、质检等） | 「按发明写交底」「项目路径 …」 |
-| **实用新型** | 产品形状、构造、连接与装配（卡扣、支架、散热结构等） | 「实用新型」「一种…装置/结构」 |
-| **外观设计** | 产品外形、图案、色彩或其结合 | 「外观设计」「设计说明 / 六视图」 |
-
-实用新型 / 外观会先填 Schema，再写 **`figure_plan.yaml`** 选图入文；查新带对应 `--type`。细则见 [SKILL.md](SKILL.md)、`prompts/disclosure/intake.md`。  
-查新优先 [中国专利公布公告](http://epub.cnipa.gov.cn/)，见 `prompts/disclosure/prior_art_search.md`。  
-在**已有交底书**上补材料或纠错时无需说「迭代」——按 `merger.md` / `correction_handler.md` 另存新稿（实用/外观改图或主题时同步 `figure_plan`）。
-
-### 专利通俗解读
-
-例如：读专利、专利解读、看懂权要、`/读专利`、`/patent-read`，并给出**公开号或 PDF 路径**。
-
-技能会走阅读模式：取证 → 叙述故事线 → 公开线索辅助 →（推荐）Obsidian 入库与知识图谱。  
-**强烈推荐**配置 Obsidian 库（环境变量 `PATENT_READER_OBSIDIAN_VAULT`），才能完整体验索引、Canvas、术语网、关系图配色与公开线索旁注；无库时可降级到 `outputs/patent_reader/`，效果会弱一截。Windows 安装与可选社区插件见 [docs/obsidian-setup-guide.md](docs/obsidian-setup-guide.md)。流程与工具见 [tools/patent_reader/README.md](tools/patent_reader/README.md)、[SKILL.md](SKILL.md)「专利通俗解读」。
-
-接入宿主、Python / Node 依赖、可选 STEP 与查新等见 **[INSTALL.md](INSTALL.md)**。
+接入宿主、Python / Node、可选 STEP 等见 **[INSTALL.md](INSTALL.md)**。
 
 ---
 

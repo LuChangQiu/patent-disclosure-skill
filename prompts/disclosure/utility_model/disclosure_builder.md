@@ -82,6 +82,6 @@
 - [ ] 查新使用 `--type utility_model`（或 all 后人工筛）  
 - [ ] 未把外观美感 / 纯方法写成构造主线  
 - [ ] 若开启结构辅助线稿：有用户「是」、有参考图、件号对齐 StructureSchema、无纯文生图；辅助条默认未强行入正文  
- 
+- [ ] 交付回复：若适用，已按 **`prompts/evolution/soft_nudge.md`** 决定是否加政策感知一句（低频）
 
 模版表例见同目录 **`template_reference.md`**。

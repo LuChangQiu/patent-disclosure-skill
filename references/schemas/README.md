@@ -7,6 +7,7 @@
 | `figure_plan.schema.yaml` | 附图选用、排序与图际关联（`relates_to`） | 实用/外观成文只嵌 `use_in_disclosure: true` | 可选；解读不强依赖 |
 | `design_lineart_brief.schema.yaml` | 外观**辅助**线稿描述（可选，默认关） | 用户回「是」且有参考图后生成；禁止纯文生图 | 一般不用 |
 | `structure_lineart_brief.schema.yaml` | 实用**结构辅助**线稿描述（可选，默认关） | 用户回「是」且有参考图 + Structure；轮廓与序号分层；禁止自创件号 | 一般不用 |
+| `evolution_backlog.schema.yaml` | 技能进化清单（模式 C） | 旁路产出 `outputs/evolution/EVOL-*.md`；人审前不改 prompts | 不用 |
 
 填写指令：`prompts/shared/fill_structure_schema.md`、`fill_appearance_schema.md`（填表末步写出 **`figure_plan.yaml`**，含跨图核对与 `relates_to`）；外观辅助线稿见 **`prompts/shared/design_lineart_assist.md`**；实用新型结构辅助线稿见 **`prompts/shared/structure_lineart_assist.md`**。  
 **禁止**在 disclosure 与 reader 各维护一份字段定义。  
