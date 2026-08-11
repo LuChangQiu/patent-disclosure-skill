@@ -8,6 +8,7 @@
 | `example_utility_model_snap_heatsink/` | **实用新型**交底 | 卡扣散热结构教学 brief；真实专利附图 + 教学用 `knowledge/cad/*.step`（测 STEP 反问/解析） |
 | `example_design_desk_lamp/` | **外观设计**交底 | 折臂台灯教学 brief；国内媒体实拍 + README 下载链接 |
 | `example_patent_reader/` | **解读** | README 内 CDN / `fetch_patent_pdf` 下载链接；PDF 本地自备（gitignore） |
+| `example_oa_response/` | **审查答复（模式 D）** | 2 篇历史案例 md + 1 篇待答复通知书；测入库/标签检索/答复草稿 |
 
 冒烟用极简 TXT 见 `tests/fixtures/patent_reader_sample.txt`。
 
@@ -29,6 +30,12 @@
 ## 专利解读（含实用 / 外观 PDF）
 
 见 [example_patent_reader/README.md](example_patent_reader/README.md)。实用新型 / 外观公开号下载后，解读时按 `type_hooks.md` 写 `structure_schema.json` / `appearance_schema.json`，入库自动写入笔记与 Canvas。
+
+## 审查答复（模式 D）
+
+见 [example_oa_response/README.md](example_oa_response/README.md)。
+
+要点：先入库 `cases/*.md` → 用 `pending/oa_notice_pending.md` 做 `search_cases`（可 `--tags-only`）→ 再按 `prompts/oa/respond_office_action.md` 出草稿。
 
 ## 发明交底（原有）
 

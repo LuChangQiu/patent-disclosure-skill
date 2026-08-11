@@ -124,6 +124,24 @@ python tools/crawl/cnipa_epub_search.py --type utility_model 卡扣
 
 与主流程 `requirements.txt` **独立**；未安装时 Step 5 仍可按该 prompt 降级为 **WebSearch**（如 Google 学术）。
 
+## 可选：审查答复案例库（模式 D，默认关闭）
+
+显式触发「审查答复 / 案例入库 / `/oa`」后使用。配置与向量库默认在操作系统**文档**目录：`{Documents}/patent-disclosure-skill/oa/`（`PATENT_OA_HOME` 可覆盖）。**推荐**智谱 `embedding-3`；亦支持 DashScope / MiniMax / 本地 / OpenAI（`config.py set --preset …`）。
+
+```bash
+pip install -r tools/oa/requirements-oa.txt
+# 例：智谱
+# 环境变量 ZHIPUAI_API_KEY=…
+python tools/oa/config.py recommend
+python tools/oa/config.py set --preset zhipu
+# 其他：--preset dashscope|minimax|local|openai
+python tools/oa/ingest_case.py -i path/to/case.md
+python tools/oa/refresh_vault.py   # 刷新 oa 索引 / Bases / 关联 Canvas
+python tools/oa/search_cases.py --query "创造性 区别特征" --defect inventiveness --top-k 5
+```
+
+Obsidian 案例落在 `{vault}/oa/cases/history/`（另有 `pending/`、`drafts/`）。与主依赖**独立**。细则见 `prompts/oa/`、`tools/oa/README.md`、[SKILL.md](SKILL.md) 模式 D。
+
 ## 强烈建议：专利通俗解读 + Obsidian 库
 
 **强烈建议安装并配置 Obsidian**，才能完整体验索引、Canvas 知识图谱、术语网、关系图配色与公开线索旁注。无库时可降级到 `outputs/patent_reader/`，效果会弱一截。

@@ -2,7 +2,7 @@
 
 # 中国专利.skill
 
-> 中国专利技能：**挖掘并写成可交付交底书**，或把**已有专利读成通俗笔记**。
+> 中国专利技能：交底书（发明/实用新型/外观）编写，公开专利通俗解读，政策/审查动向嗅探，审查通知自动答复。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](https://www.python.org/)
@@ -15,7 +15,7 @@
 定稿后还要**多轮补材料、纠错**并留下修改追溯？<br>
 公开专利晦涩难懂，想**快速看懂权要与落地语境**？
 
-[初衷](#初衷) · [运行效果](#运行效果) · [支持作者](#支持作者) · [两种用法](#两种用法) · [功能特性](#功能特性) · [示例](#示例) · [参考文档](#参考文档) · [安装说明](INSTALL.md) · [技能入口](SKILL.md)
+[初衷](#初衷) · [运行效果](#运行效果) · [功能特性](#功能特性) · [示例](#示例) · [支持作者](#支持作者) · [参考文档](#参考文档) · [安装说明](INSTALL.md) · [技能入口](SKILL.md)
 
 </div>
 
@@ -96,42 +96,6 @@
 
 ---
 
-## 支持作者
-
-如果这个 Skill 对您有帮助，可以请我喝杯咖啡☕随缘支持，感谢感谢🙏🙏
-
-<table width="70%" border="1" cellpadding="12" cellspacing="0">
-<tr>
-<th width="40%" align="center">随缘支持</th>
-<th width="60%" align="center">Star History</th>
-</tr>
-<tr>
-<td width="40%" valign="middle" align="center">
-<img src="docs/thanks.jpg" alt="随缘支持" width="100%" />
-</td>
-<td width="60%" valign="middle" align="center">
-<a href="https://www.star-history.com/#handsomestWei/patent-disclosure-skill&Date">
-  <img alt="Star History Chart" src="https://raw.githubusercontent.com/handsomestWei/patent-disclosure-skill/star-history/star-history.svg" width="100%" />
-</a>
-</td>
-</tr>
-</table>
-
----
-
-## 两种用法
-
-| | **专利交底书编写** | **专利通俗解读** |
-|--|-------------------|------------------|
-| **输入** | 项目文档 / 代码 / 主题 | 公开号、专利 PDF / 全文 |
-| **输出** | `{案件}_{时间戳}.md` + `.docx` | Obsidian 解读笔记（或 `outputs/patent_reader/`） |
-| **典型说法** | 专利挖掘、交底书、查新、`/交底书` | 读专利、专利解读、`/读专利`、`/patent-read` |
-| **入口** | `SKILL.md` 主流程 Step 1–8 | `prompts/reader/patent_plain_reader.md` |
-
-提供专利号或专利全文/PDF 时，技能**优先走解读**，不会默认开交底书流水线。
-
----
-
 ## 功能特性
 
 ### 专利交底书编写
@@ -192,9 +156,13 @@
 
 怎么开口：读专利、专利解读、`/读专利`、`/patent-read`，并给出**公开号或 PDF 路径**。配置库环境变量 `PATENT_READER_OBSIDIAN_VAULT` 体验更完整；无库时可降级到 `outputs/patent_reader/`。流程见 [tools/patent_reader/README.md](tools/patent_reader/README.md)、[SKILL.md](SKILL.md)。
 
-### 政策感知与技能自进化（可选）
+### 政策感知与技能自进化
 
-审查指南、智能审查口径一变，交底写法很容易「还按老习惯」。需要时可以说一声「技能进化 / 政策雷达」：联网看看国知局等官网**近期政策与审查动向**，把观点和原文链接整理成**参考清单**（默认 `outputs/evolution/EVOL-*.md`；确认沉淀后再拷到 `docs/evolution/`），帮你判断技能该不该跟、怎么跟。也可 `/patent-evolve`、`/技能进化`。默认不开；你点头确认前，**不会**擅自改交底/解读流程。细则见 [SKILL.md](SKILL.md)「模式 C」与 `prompts/evolution/`。
+审查指南、智能审查口径一变，交底写法很容易「还按老习惯」。需要时可以说一声「技能进化 / 政策雷达 / 政策审查动向嗅探」：联网看看国知局等官网**近期政策与审查动向**，把观点和原文链接整理成**参考清单**（默认 `outputs/evolution/EVOL-*.md`；确认沉淀后再拷到 `docs/evolution/`），帮你判断技能该不该跟、怎么跟。也可 `/patent-evolve`、`/技能进化`。默认不开；你点头确认前，**不会**擅自改交底/解读流程。细则见 [SKILL.md](SKILL.md)「模式 C」与 `prompts/evolution/`。
+
+### 审查答复辅助
+
+审查意见一来，往往要翻旧案、对法条、想策略——经验散落在 PDF 和聊天记录里，很难复用。需要时可以说「审查答复 / 案例入库 / `/审查答复`」：**自动**完成「历史通知书与答复脱敏写入 Obsidian、打上法条/缺陷等标签以固化经验 → 对新通知书做标签过滤（向量模型可选；启用后叠加本地轻量向量相似度检索，相当于外挂一套属于自己的 RAG 知识库）→ 交大模型起草意见陈述」整条链路，提高召回精准度，让答复更贴你的历史口径，而不是凭空瞎编。向量可跳过，也可中途开启并重建索引；向量不可用时仍靠标签检索继续出草稿。默认不开；产出为草稿，须人审后再递交。细则见 [SKILL.md](SKILL.md)「模式 D」、[docs/oa/README.md](docs/oa/README.md)、[tools/oa/README.md](tools/oa/README.md)。
 
 接入宿主、Python / Node、可选 STEP 等见 **[INSTALL.md](INSTALL.md)**。
 
@@ -202,25 +170,96 @@
 
 ## 示例
 
-索引与话术见 [examples/README.md](examples/README.md)。
+索引见 [examples/README.md](examples/README.md)。完整产物落在 **`outputs/`** 或 Obsidian 库。
 
-| 示例 | 类型 | 路径 |
-|------|------|------|
-| 批任务调度 | **发明**交底 | [`examples/example_batch_job_scheduler/`](examples/example_batch_job_scheduler/)（扫 `knowledge/`） |
-| 卡扣散热结构 | **实用新型**交底 | [`examples/example_utility_model_snap_heatsink/`](examples/example_utility_model_snap_heatsink/) |
-| 折臂台灯 | **外观设计**交底 | [`examples/example_design_desk_lamp/`](examples/example_design_desk_lamp/) |
-| 公开专利 PDF | **通俗解读** | [`examples/example_patent_reader/`](examples/example_patent_reader/)（PDF 本地自备） |
+<!-- 使用 HTML 表格：前两列 nowrap 防挤窄，后两列自动换行 -->
+<table>
+<colgroup>
+<col width="1%">
+<col width="1%">
+<col>
+<col>
+</colgroup>
+<thead>
+<tr>
+<th align="left" nowrap width="1%">示例</th>
+<th align="left" nowrap width="1%">类型</th>
+<th align="left">材料</th>
+<th align="left">怎么开口</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td nowrap width="1%">批任务调度</td>
+<td nowrap width="1%"><strong>发明</strong>交底</td>
+<td><a href="examples/example_batch_job_scheduler/"><code>examples/example_batch_job_scheduler/</code></a>（扫 <code>knowledge/</code>）</td>
+<td>「按发明写交底，项目路径 …/knowledge/」或 <code>/交底书</code></td>
+</tr>
+<tr>
+<td nowrap width="1%">卡扣散热结构</td>
+<td nowrap width="1%"><strong>实用新型</strong>交底</td>
+<td><a href="examples/example_utility_model_snap_heatsink/"><code>examples/example_utility_model_snap_heatsink/</code></a></td>
+<td>「实用新型交底，材料在 …/example_utility_model_snap_heatsink/」</td>
+</tr>
+<tr>
+<td nowrap width="1%">折臂台灯</td>
+<td nowrap width="1%"><strong>外观设计</strong>交底</td>
+<td><a href="examples/example_design_desk_lamp/"><code>examples/example_design_desk_lamp/</code></a></td>
+<td>「外观设计交底，材料在 …/example_design_desk_lamp/」</td>
+</tr>
+<tr>
+<td nowrap width="1%">公开专利 PDF</td>
+<td nowrap width="1%"><strong>通俗解读</strong></td>
+<td><a href="examples/example_patent_reader/"><code>examples/example_patent_reader/</code></a>（PDF 本地自备）</td>
+<td>「读专利」+ 公开号或 PDF；<code>/读专利</code>、<code>/patent-read</code></td>
+</tr>
+<tr>
+<td nowrap width="1%">政策 / 审查动向</td>
+<td nowrap width="1%"><strong>技能自进化</strong></td>
+<td>无需本地样例（联网出清单 → <code>outputs/evolution/EVOL-*.md</code>）</td>
+<td>「技能进化 / 政策雷达 / 政策审查动向嗅探：近 12 个月国知局动向，整理观点↔链接，先别改技能」；<code>/patent-evolve</code>、<code>/技能进化</code></td>
+</tr>
+<tr>
+<td nowrap width="1%">审查答复样例</td>
+<td nowrap width="1%"><strong>审查答复</strong></td>
+<td><a href="examples/example_oa_response/"><code>examples/example_oa_response/</code></a>（2 历史案 + 1 待答复通知书）</td>
+<td>「审查答复：先入库 <code>cases/</code>，再用 <code>pending/oa_notice_pending.md</code> 出草稿；向量可跳过」；<code>/审查答复</code>、<code>/oa</code></td>
+</tr>
+</tbody>
+</table>
 
-完整产物由流程生成到 **`outputs/`** 或 Obsidian 库。
+---
+
+## 支持作者
+
+如果这个 Skill 对您有帮助，可以请我喝杯咖啡☕随缘支持，感谢感谢🙏🙏
+
+<table width="70%" border="1" cellpadding="12" cellspacing="0">
+<tr>
+<th width="40%" align="center">随缘支持</th>
+<th width="60%" align="center">Star History</th>
+</tr>
+<tr>
+<td width="40%" valign="middle" align="center">
+<img src="docs/thanks.jpg" alt="随缘支持" width="200" />
+</td>
+<td width="60%" valign="middle" align="center">
+<a href="https://www.star-history.com/#handsomestWei/patent-disclosure-skill&Date">
+  <img alt="Star History Chart" src="https://raw.githubusercontent.com/handsomestWei/patent-disclosure-skill/star-history/star-history.svg" width="100%" />
+</a>
+</td>
+</tr>
+</table>
 
 ---
 
 ## 参考文档
 
-- [技能入口与 Agent 流程](SKILL.md)（交底书主流程 + 阅读模式）
+- [技能入口与 Agent 流程](SKILL.md)（交底 / 解读 / 进化 / 审查答复）
 - [详细安装说明](INSTALL.md)
 - [交底书：图示与转换 / 国知局工具](tools/README.md)
 - [专利解读工具](tools/patent_reader/README.md)
+- [审查答复 · 案例 RAG](tools/oa/README.md)
 - [Obsidian 安装与可选社区插件（Windows）](docs/obsidian-setup-guide.md)
 - [示例案件与原材料](examples/README.md)
 - [交底书模版细则](prompts/disclosure/invention/template_reference.md)
