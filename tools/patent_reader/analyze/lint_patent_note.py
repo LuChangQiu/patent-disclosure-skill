@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 专利解读笔记结构、免责声明、应用场景与附录粗校验。
 

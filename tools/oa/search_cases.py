@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """标签过滤 + 可选向量检索（向量不可用时自动回退标签）。"""
 from __future__ import annotations
 

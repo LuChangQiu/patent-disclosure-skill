@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 为专利通俗解读生成「技术落地线索」包（零付费 API）：
   - 专利内：实施例、背景、术语

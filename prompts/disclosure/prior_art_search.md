@@ -19,9 +19,9 @@
    - 示意（须按本案替换；**三次调用、每次一词**；类型按 intake）：
 
      ```bash
-     python3 …/tools/crawl/cnipa_epub_search.py --type invention 知识库
-     python3 …/tools/crawl/cnipa_epub_search.py --type invention 检索增强
-     python3 …/tools/crawl/cnipa_epub_search.py --type invention 大语言模型
+     python …/tools/crawl/cnipa_epub_search.py --type invention 知识库
+     python …/tools/crawl/cnipa_epub_search.py --type invention 检索增强
+     python …/tools/crawl/cnipa_epub_search.py --type invention 大语言模型
      ```
 
    - **脚本不做**自动分词或自动拆长中文；若确需**整句一次** AND 检索，改用 **`cnipa_epub_crawler.py`** 单传一句。
@@ -32,7 +32,7 @@
    pip install -r tools/crawl/requirements-cnipa.txt
    python -m playwright install chromium
    # Agent：对上一节每个检索单位各执行一次（示例仅展示首轮；--type 与案件类型一致）
-   python3 ${CLAUDE_SKILL_DIR}/tools/crawl/cnipa_epub_search.py --type invention 词甲
+   python ${CLAUDE_SKILL_DIR}/tools/crawl/cnipa_epub_search.py --type invention 词甲
    ```
 
    - **合并责任在 Agent**：每次调用解析 **stdout** 上**唯一一行** **`EPUB_HITS_JSON:`** 后的 JSON 数组；在推理中按 **`pub_number`** 为主键去重合并（无则 **`link`**，再否则可用标题前缀），得到**一份**总表后再写入查新笔记与 1.1。

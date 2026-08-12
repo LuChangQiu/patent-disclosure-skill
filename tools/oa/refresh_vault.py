@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """刷新 Obsidian oa：目录分层 + 索引 + Bases + 关联 Canvas。
 
 用法：

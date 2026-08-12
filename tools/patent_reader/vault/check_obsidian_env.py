@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 阅读模式对话开始前：探测 Obsidian 是否安装、默认/已登记库路径。
 

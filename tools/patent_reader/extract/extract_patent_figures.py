@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 从专利 PDF 抽取附图（caption+bbox 裁切 + xref 回退 + 质量门）。
 

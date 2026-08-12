@@ -146,19 +146,19 @@ npx -y @mermaid-js/mermaid-cli mmdc -i sample.mmd -o sample.png -b white
 
 ```bash
 # 写出定稿 .md，并在同目录生成同名 .docx（默认）；-o 须为「案件名_YYYYMMDDHHmmss.md」（见 prompts/disclosure/invention/disclosure_builder.md §7.3 第 5 点）
-python3 tools/shared/mermaid_render.py -i draft.md -o "一种XXX方法及系统_20260408143025.md"
+python tools/shared/mermaid_render.py -i draft.md -o "一种XXX方法及系统_20260408143025.md"
 
 # 指定 .docx 路径（.md 主名仍须含时间戳）
-python3 tools/shared/mermaid_render.py -i draft.md -o out/一种XXX方法及系统_20260408143025.md --docx out/一种XXX方法及系统_20260408143025.docx
+python tools/shared/mermaid_render.py -i draft.md -o out/一种XXX方法及系统_20260408143025.md --docx out/一种XXX方法及系统_20260408143025.docx
 
 # 仅 Markdown，不要 Word
-python3 tools/shared/mermaid_render.py -i draft.md -o "一种XXX方法及系统_20260408143025.md" --no-docx
+python tools/shared/mermaid_render.py -i draft.md -o "一种XXX方法及系统_20260408143025.md" --no-docx
 
 # 更高清晰度（可选）
-python3 tools/shared/mermaid_render.py -i draft.md -o "…定稿.md" --mmdc-scale 3 --mmdc-width 1600 --mmdc-height 1200
+python tools/shared/mermaid_render.py -i draft.md -o "…定稿.md" --mmdc-scale 3 --mmdc-width 1600 --mmdc-height 1200
 
 # 指定 mermaid 图片子目录（相对输出 .md）
-python3 tools/shared/mermaid_render.py -i draft.md -o out/一种XXX方法及系统_20260408143025.md --assets-dir figures/mermaid
+python tools/shared/mermaid_render.py -i draft.md -o out/一种XXX方法及系统_20260408143025.md --assets-dir figures/mermaid
 ```
 
 **Word 生成失败**（缺依赖、版式报错等）时：脚本仍以退出码 **0** 结束（Markdown 已成功）；stderr 会打印 **`md_to_docx.py` 的手动命令**，请复制执行。
@@ -201,8 +201,8 @@ pip install -r requirements.txt   # 含 matplotlib
 ### 用法
 
 ```bash
-python3 tools/shared/math_render.py -i draft.md -o draft_with_math.md
-python3 tools/shared/math_render.py -i draft.md -o out.md --assets-dir math_figures
+python tools/shared/math_render.py -i draft.md -o draft_with_math.md
+python tools/shared/math_render.py -i draft.md -o out.md --assets-dir math_figures
 ```
 
 定稿流水线：**``mermaid_render.py`` 默认先跑公式再跑 mermaid**（可用 ``--no-math`` 跳过）。单独转 Word 时 **`md_to_docx.py` 也会自动尝试公式渲染**（``--no-math-render`` 可关闭）。
@@ -226,20 +226,20 @@ pip install -r requirements.txt
 ### 用法
 
 ```bash
-python3 tools/shared/md_to_docx.py --input path/to/交底书.md --output path/to/交底书.docx
-python3 tools/shared/md_to_docx.py -i a.md -o a.docx --no-omml   # 仅 PNG/原文
+python tools/shared/md_to_docx.py --input path/to/交底书.md --output path/to/交底书.docx
+python tools/shared/md_to_docx.py -i a.md -o a.docx --no-omml   # 仅 PNG/原文
 ```
 
 图片 `![](相对路径.png)`：默认相对 **Markdown 文件所在目录**；也可指定根目录：
 
 ```bash
-python3 tools/shared/md_to_docx.py -i ./outputs/case/disclosure.md -o ./outputs/case/disclosure.docx --base-dir ./outputs/case
+python tools/shared/md_to_docx.py -i ./outputs/case/disclosure.md -o ./outputs/case/disclosure.docx --base-dir ./outputs/case
 ```
 
 **插图**：对 PNG/GIF/JPEG 会读取像素尺寸，在默认 **最大宽 5.5" × 最大高 8.2"** 内**等比缩放**并同时指定 `width`/`height`，避免竖长流程图仅按宽度放大后**高度超出版心**、打印或阅读时像被裁切。可按纸张边距调整，例如：
 
 ```bash
-python3 tools/shared/md_to_docx.py -i a.md -o a.docx --image-max-width-inches 6 --image-max-height-inches 9
+python tools/shared/md_to_docx.py -i a.md -o a.docx --image-max-width-inches 6 --image-max-height-inches 9
 ```
 
 在 Claude Code 中可将 `tools` 换为 `${CLAUDE_SKILL_DIR}/tools`。
@@ -275,7 +275,7 @@ python3 tools/shared/md_to_docx.py -i a.md -o a.docx --image-max-width-inches 6 
 **依赖**：仅标准库。
 
 ```bash
-python3 tools/shared/iteration_dialog_log.py --case-dir outputs/某案件 --kind merge \
+python tools/shared/iteration_dialog_log.py --case-dir outputs/某案件 --kind merge \
   --user "补充了调度装置资料，合并进第三章" \
   --summary "已扩写 3.4，并更新实施例；未改保护点表述。" \
   --artifacts "一种XXX方法及系统_20260408143025.md,一种XXX方法及系统_20260408143025.docx"
@@ -302,14 +302,14 @@ pip install -r requirements.txt
 ### 用法
 
 ```bash
-python3 tools/shared/docx_to_md.py --input path/to/设计说明.docx --output outputs/case/design.md
+python tools/shared/docx_to_md.py --input path/to/设计说明.docx --output outputs/case/design.md
 ```
 
 - 默认图片目录：`outputs/case/design_media/`，Markdown 内为相对路径 `![](design_media/img_0001.png)`。
 - 自定义图片目录：
 
 ```bash
-python3 tools/shared/docx_to_md.py -i ./raw/spec.docx -o ./knowledge/spec.md --media-dir ./knowledge/spec_assets
+python tools/shared/docx_to_md.py -i ./raw/spec.docx -o ./knowledge/spec.md --media-dir ./knowledge/spec_assets
 ```
 
 转换警告（如部分样式、WMF 图）会输出到 **stderr**，仍可能生成可用 `.md`。
@@ -320,7 +320,7 @@ python3 tools/shared/docx_to_md.py -i ./raw/spec.docx -o ./knowledge/spec.md --m
 - **Markdown 输出在 mammoth 侧标记为 deprecated**，复杂排版可能弱于「先导出 HTML 再转 MD」；专利扫描一般足够。若版式崩坏，建议所内 **另存为 PDF 或纯文本** 再扫。
 - **WMF/EMF** 等 Windows 图元可能需单独处理（见 [mammoth WMF 配方](https://github.com/mwilliamson/python-mammoth)）。
 
-在 Claude Code 中可将 `tools` 换为 `${CLAUDE_SKILL_DIR}/tools`。Windows 无 `python3` 时用 `python`。
+在 Claude Code 中可将 `tools` 换为 `${CLAUDE_SKILL_DIR}/tools`。
 
 ---
 
@@ -339,14 +339,14 @@ pip install -r requirements.txt
 ### 用法
 
 ```bash
-python3 tools/shared/pptx_to_md.py --input path/to/评审材料.pptx --output outputs/case/review.md
+python tools/shared/pptx_to_md.py --input path/to/评审材料.pptx --output outputs/case/review.md
 ```
 
 - 默认图片目录：`outputs/case/review_media/`，文件名形如 `slide03_img0001.png`。
 - 自定义图片目录：
 
 ```bash
-python3 tools/shared/pptx_to_md.py -i ./raw/deck.pptx -o ./knowledge/deck.md --media-dir ./knowledge/deck_media
+python tools/shared/pptx_to_md.py -i ./raw/deck.pptx -o ./knowledge/deck.md --media-dir ./knowledge/deck_media
 ```
 
 每页输出二级标题 `## 第 N 页`，其后为该页形状中的**文本与表格**（简化为管道表）及图片引用；若存在**演讲者备注**，以「**备注**」小节附于该页末尾。
@@ -357,7 +357,7 @@ python3 tools/shared/pptx_to_md.py -i ./raw/deck.pptx -o ./knowledge/deck.md --m
 - **图表、SmartArt、嵌入 OLE** 等若未以普通图片形状存在，**不会**自动栅格化为 PNG；可先在 PowerPoint 中另存为图片或导出 PDF 作补充材料。
 - 文本按形状遍历顺序输出，与视觉阅读顺序可能略有差异。
 
-在 Claude Code 中可将 `tools` 换为 `${CLAUDE_SKILL_DIR}/tools`。Windows 无 `python3` 时用 `python`。
+在 Claude Code 中可将 `tools` 换为 `${CLAUDE_SKILL_DIR}/tools`。
 
 ---
 

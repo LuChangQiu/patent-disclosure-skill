@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """案例脱敏入库：写 Obsidian/docs 笔记并更新 sqlite-vec。
 
 支持直接喂 PDF：自动抽取文本 → 生成案例草稿 md →（可选）入库。

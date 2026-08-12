@@ -39,7 +39,7 @@
 **分类扫描（轻量，无重依赖）**：在扫描根（含 `knowledge/`、用户 @ 的目录等）执行：
 
 ```bash
-python3 ${CLAUDE_SKILL_DIR}/tools/shared/cad_scan.py -r "<扫描根>" --json
+python ${CLAUDE_SKILL_DIR}/tools/shared/cad_scan.py -r "<扫描根>" --json
 ```
 
 （多根可重复 `-r`。初次 Step 2 与**多轮补材料后**均须再跑。）
@@ -56,8 +56,8 @@ python3 ${CLAUDE_SKILL_DIR}/tools/shared/cad_scan.py -r "<扫描根>" --json
 
 ```bash
 pip install -r ${CLAUDE_SKILL_DIR}/tools/shared/requirements-step.txt
-python3 ${CLAUDE_SKILL_DIR}/tools/shared/step_to_views.py --check-deps
-python3 ${CLAUDE_SKILL_DIR}/tools/shared/step_to_views.py --enable-step-parse \
+python ${CLAUDE_SKILL_DIR}/tools/shared/step_to_views.py --check-deps
+python ${CLAUDE_SKILL_DIR}/tools/shared/step_to_views.py --enable-step-parse \
   -i "<path/to/model.step>" -o "outputs/{案件标识}/cad_views"
 ```
 
@@ -96,8 +96,8 @@ Agent **不得**因「只能舒适读取文本」而**遗漏**项目内的 Word 
 2. **转换（本仓库脚本）**：对每个文件执行（路径按实际替换；`${CLAUDE_SKILL_DIR}` 为技能根）：
 
    ```bash
-   python3 ${CLAUDE_SKILL_DIR}/tools/shared/docx_to_md.py -i "<路径>/<名>.docx" -o "<同目录或 docs>/<名>.md"
-   python3 ${CLAUDE_SKILL_DIR}/tools/shared/pptx_to_md.py -i "<路径>/<名>.pptx" -o "<同目录或 docs>/<名>.md"
+   python ${CLAUDE_SKILL_DIR}/tools/shared/docx_to_md.py -i "<路径>/<名>.docx" -o "<同目录或 docs>/<名>.md"
+   python ${CLAUDE_SKILL_DIR}/tools/shared/pptx_to_md.py -i "<路径>/<名>.pptx" -o "<同目录或 docs>/<名>.md"
    ```
 
    需已 `pip install -r requirements.txt`。输出旁会生成 **`{md 主名}_media/`**，内为嵌入图，**以生成的 `.md` 正文与图片引用为扫描依据**。

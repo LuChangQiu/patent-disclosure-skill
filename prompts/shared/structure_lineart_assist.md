@@ -34,7 +34,7 @@
 ### 2. 门禁校验（推荐）
 
 ```bash
-python3 ${CLAUDE_SKILL_DIR}/tools/shared/structure_lineart_gate.py --enable-structure-lineart \
+python ${CLAUDE_SKILL_DIR}/tools/shared/structure_lineart_gate.py --enable-structure-lineart \
   --case-dir "outputs/{案件标识}" --prepare-jobs
 ```
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 将 Markdown 转为 Word（.docx），按标题层级映射为 Word 内置「标题 1–9」样式，
 便于交底书交付代理人或所内流程。

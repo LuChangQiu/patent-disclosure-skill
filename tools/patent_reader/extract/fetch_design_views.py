@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 中国外观设计视图取证（解读模式固化入口）。
 

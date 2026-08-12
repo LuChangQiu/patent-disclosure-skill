@@ -62,7 +62,7 @@
 3. **长度**：文件名（不含扩展名）建议 **≤ 80 个字符**；超长则**截断**到约 80 字并保留语义完整（例如截在「方法及系统」等结尾词之前），勿用无意义随机串。
 4. **定稿命令**：`mermaid_render.py` 的 `-o` / `--docx` 须使用**同一主文件名**，且该主名**必须符合第 5 点**（**案件名 + `_` + 14 位时间戳**）。示例（案件名已按上文规范化、过长已截断时）：
 
-   `python3 tools/shared/mermaid_render.py -i "…草稿.md" -o "一种异构计算环境下基于资源画像与限频重排队的批任务调度方法及系统_20260408143025.md"`
+   `python tools/shared/mermaid_render.py -i "…草稿.md" -o "一种异构计算环境下基于资源画像与限频重排队的批任务调度方法及系统_20260408143025.md"`
 
    默认同目录生成同名 `.docx`。过程性中间稿（仅自用、非交付）文件名可自定，但**最终交付**不得省略时间戳。
 
@@ -142,7 +142,7 @@ Agent **落盘时**即采用上述命名，并在回复中写明路径，便于�
 1. **Markdown**：定稿 `.md` **保留** `` ```mermaid`` 围栏源码，并含 ``<!-- ![图示](…png) -->`` 注释引用（由 `mermaid_render.py` 生成）。
 2. **Word**：对上一文件执行 `md_to_docx.py`，或使用一条命令：
 
-`python3 tools/shared/mermaid_render.py -i <含图示的草稿.md> -o "<案件名_YYYYMMDDHHmmss>.md"`（默认在同目录生成**同名** `.docx`；可用 `--docx` 指定路径，`--no-docx` 跳过 Word。Word 失败时见终端提示的手动命令。）
+`python tools/shared/mermaid_render.py -i <含图示的草稿.md> -o "<案件名_YYYYMMDDHHmmss>.md"`（默认在同目录生成**同名** `.docx`；可用 `--docx` 指定路径，`--no-docx` 跳过 Word。Word 失败时见终端提示的手动命令。）
 
 （mermaid 依赖 Node/mmdc、`pip install -r requirements.txt` 见 `tools/README.md`。）
 

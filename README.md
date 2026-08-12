@@ -244,9 +244,7 @@
 <img src="docs/thanks.jpg" alt="随缘支持" width="200" />
 </td>
 <td width="60%" valign="middle" align="center">
-<a href="https://www.star-history.com/#handsomestWei/patent-disclosure-skill&Date">
-  <img alt="Star History Chart" src="https://raw.githubusercontent.com/handsomestWei/patent-disclosure-skill/star-history/star-history.svg" width="100%" />
-</a>
+<img alt="Star History Chart" src="https://raw.githubusercontent.com/handsomestWei/patent-disclosure-skill/star-history/star-history.svg" width="100%" />
 </td>
 </tr>
 </table>

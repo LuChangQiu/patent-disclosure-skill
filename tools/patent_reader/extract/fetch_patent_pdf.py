@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 按公开号下载专利全文 PDF（解读模式固化入口，勿每次现写脚本）。
 

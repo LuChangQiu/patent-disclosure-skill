@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 校验并规范化 claim_tree.json（权项父子树）。
 

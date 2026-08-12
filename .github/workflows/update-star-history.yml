@@ -12,8 +12,8 @@ name: Update star history
 
 on:
   schedule:
-    # Daily at 09:00 Beijing time (UTC 01:00).
-    - cron: "0 1 * * *"
+    # Daily 11:48 Beijing (UTC 03:48). Avoid :00 to reduce schedule drop under load.
+    - cron: "56 3 * * *"
   workflow_dispatch:
 
 permissions:

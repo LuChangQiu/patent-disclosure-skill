@@ -21,7 +21,7 @@
 **在向用户确认主题之外的实质步骤之前**，先运行：
 
 ```bash
-python3 ${CLAUDE_SKILL_DIR}/tools/patent_reader/vault/check_obsidian_env.py --json
+python ${CLAUDE_SKILL_DIR}/tools/patent_reader/vault/check_obsidian_env.py --json
 ```
 
 | 结果 | Agent 行为 |
@@ -32,7 +32,7 @@ python3 ${CLAUDE_SKILL_DIR}/tools/patent_reader/vault/check_obsidian_env.py --js
 
 ```bash
 # 用户给出路径后
-python3 ${CLAUDE_SKILL_DIR}/tools/patent_reader/vault/check_obsidian_env.py --set "库路径" --setx
+python ${CLAUDE_SKILL_DIR}/tools/patent_reader/vault/check_obsidian_env.py --set "库路径" --setx
 
 # Windows 当前会话（Agent 后续命令需带上）
 # PowerShell: $env:PATENT_READER_OBSIDIAN_VAULT = "库路径"
@@ -64,7 +64,7 @@ python3 ${CLAUDE_SKILL_DIR}/tools/patent_reader/vault/check_obsidian_env.py --se
 **仅有公开号、无本地全文/PDF 时**（**禁止**每次现写下载脚本）：先跑固化入口，再 extract：
 
 ```bash
-python3 ${CLAUDE_SKILL_DIR}/tools/patent_reader/extract/fetch_patent_pdf.py \
+python ${CLAUDE_SKILL_DIR}/tools/patent_reader/extract/fetch_patent_pdf.py \
   --pub <公开号> -o tmp/patent_reader/${RUN}
 # → tmp/patent_reader/${RUN}/source/<公开号>.pdf
 # 源优先级与备选见 references/patent_pdf_sources.yaml
@@ -74,7 +74,7 @@ python3 ${CLAUDE_SKILL_DIR}/tools/patent_reader/extract/fetch_patent_pdf.py \
 取证成功后若尚未知类型，可再确认：
 
 ```bash
-python3 ${CLAUDE_SKILL_DIR}/tools/shared/patent_type.py --pub <公开号>
+python ${CLAUDE_SKILL_DIR}/tools/shared/patent_type.py --pub <公开号>
 ```
 
 实用 / 外观 → 按 `type_hooks.md` 填 Schema（**有公开号即应自动触发**，勿等用户口头说类型）。
@@ -84,7 +84,7 @@ python3 ${CLAUDE_SKILL_DIR}/tools/shared/patent_type.py --pub <公开号>
 **外观设计（公开号 `CN…S`）**：`fetch_patent_pdf.py` 常因无 CDN 失败。应改用：
 
 ```bash
-python3 ${CLAUDE_SKILL_DIR}/tools/patent_reader/extract/fetch_design_views.py \
+python ${CLAUDE_SKILL_DIR}/tools/patent_reader/extract/fetch_design_views.py \
   --pub <公开号> -o tmp/patent_reader/${RUN}
 # → figures/images/view_*.jpg + figures/manifest.json + source/*_design_brief.json
 ```
@@ -94,14 +94,14 @@ python3 ${CLAUDE_SKILL_DIR}/tools/patent_reader/extract/fetch_design_views.py \
 用户已提供 PDF/全文路径时：**跳过** `fetch_patent_pdf`，直接 extract。
 
 ```bash
-python3 ${CLAUDE_SKILL_DIR}/tools/patent_reader/extract/extract_patent_text.py \
+python ${CLAUDE_SKILL_DIR}/tools/patent_reader/extract/extract_patent_text.py \
   -i <全文或 ${RUN}/source/<公开号>.pdf> -o tmp/patent_reader/${RUN} --pub-number <若有>
 ```
 
 **PDF 附图（有 PDF 时执行；caption+bbox + 质量门）**：
 
 ```bash
-python3 ${CLAUDE_SKILL_DIR}/tools/patent_reader/extract/extract_patent_figures.py \
+python ${CLAUDE_SKILL_DIR}/tools/patent_reader/extract/extract_patent_figures.py \
   -i <patent.pdf> -o tmp/patent_reader/${RUN}/figures
 # 人工确认后少丢可用图：追加 --include-review
 ```
@@ -113,9 +113,9 @@ python3 ${CLAUDE_SKILL_DIR}/tools/patent_reader/extract/extract_patent_figures.p
 ### 第 1.5 步：技术落地线索 + 可视化草稿
 
 ```bash
-python3 ${CLAUDE_SKILL_DIR}/tools/patent_reader/analyze/build_context_anchor.py -w tmp/patent_reader/${RUN}
+python ${CLAUDE_SKILL_DIR}/tools/patent_reader/analyze/build_context_anchor.py -w tmp/patent_reader/${RUN}
 
-python3 ${CLAUDE_SKILL_DIR}/tools/patent_reader/analyze/build_claim_mermaid.py \
+python ${CLAUDE_SKILL_DIR}/tools/patent_reader/analyze/build_claim_mermaid.py \
   --claim-tree tmp/patent_reader/${RUN}/claim_tree.json \
   --pub-number <公开号> \
   -o tmp/patent_reader/${RUN}/claim_mermaid.mmd
@@ -169,7 +169,7 @@ python3 ${CLAUDE_SKILL_DIR}/tools/patent_reader/analyze/build_claim_mermaid.py \
 5. **再跑校验**（有 issues 必须修到通过；`multi_parent_candidates` 为警告，校对后可保留 candidates）：
 
 ```bash
-python3 ${CLAUDE_SKILL_DIR}/tools/patent_reader/analyze/validate_claim_tree.py \
+python ${CLAUDE_SKILL_DIR}/tools/patent_reader/analyze/validate_claim_tree.py \
   -i tmp/patent_reader/${RUN}/claim_tree.json \
   --write \
   --require-review
@@ -206,7 +206,7 @@ python3 ${CLAUDE_SKILL_DIR}/tools/patent_reader/analyze/validate_claim_tree.py \
 1. **先**跑校验+筛选（置信度高→低，**默认最多 3 条**）：
 
 ```bash
-python3 ${CLAUDE_SKILL_DIR}/tools/patent_reader/analyze/validate_public_clues.py \
+python ${CLAUDE_SKILL_DIR}/tools/patent_reader/analyze/validate_public_clues.py \
   -i tmp/patent_reader/${RUN}/public_clues.json \
   -o tmp/patent_reader/${RUN}/public_clues.lint.json \
   --write-filtered
@@ -286,7 +286,7 @@ python3 ${CLAUDE_SKILL_DIR}/tools/patent_reader/analyze/validate_public_clues.py
 ### 第 5 步：lint
 
 ```bash
-python3 ${CLAUDE_SKILL_DIR}/tools/patent_reader/analyze/lint_patent_note.py \
+python ${CLAUDE_SKILL_DIR}/tools/patent_reader/analyze/lint_patent_note.py \
   --note <笔记.md> \
   --manifest tmp/patent_reader/${RUN}/source_manifest.json \
   --claim-tree tmp/patent_reader/${RUN}/claim_tree.json \
@@ -302,7 +302,7 @@ python3 ${CLAUDE_SKILL_DIR}/tools/patent_reader/analyze/lint_patent_note.py \
 ### 第 6 步：写入 Obsidian
 
 ```bash
-python3 ${CLAUDE_SKILL_DIR}/tools/patent_reader/vault/write_patent_obsidian_note.py \
+python ${CLAUDE_SKILL_DIR}/tools/patent_reader/vault/write_patent_obsidian_note.py \
   --content-file <笔记.md> \
   --manifest tmp/patent_reader/${RUN}/source_manifest.json \
   --context-anchor tmp/patent_reader/${RUN}/context_anchor.json \
@@ -322,7 +322,7 @@ python3 ${CLAUDE_SKILL_DIR}/tools/patent_reader/vault/write_patent_obsidian_note
 可选单独生成 Canvas：
 
 ```bash
-python3 ${CLAUDE_SKILL_DIR}/tools/patent_reader/vault/build_patent_canvas.py \
+python ${CLAUDE_SKILL_DIR}/tools/patent_reader/vault/build_patent_canvas.py \
   --note-rel Research/Patents/<领域>/<公开号>/<文件>.md \
   --manifest tmp/patent_reader/${RUN}/source_manifest.json \
   -o Research/Patents/<领域>/<公开号>/<公开号>_图谱.canvas
@@ -349,12 +349,12 @@ python3 ${CLAUDE_SKILL_DIR}/tools/patent_reader/vault/build_patent_canvas.py \
 
 ```bash
 # 预览
-python3 ${CLAUDE_SKILL_DIR}/tools/patent_reader/vault/link_patent_notes.py \
+python ${CLAUDE_SKILL_DIR}/tools/patent_reader/vault/link_patent_notes.py \
   --focus-pub <本轮公开号> --dry-run \
   -o tmp/patent_reader/${RUN}/patent_links.preview.json
 
 # 写入（双向回写 related_pubs + 相关专利节 + 单篇图谱 + 全局 _专利关联.canvas）
-python3 ${CLAUDE_SKILL_DIR}/tools/patent_reader/vault/link_patent_notes.py \
+python ${CLAUDE_SKILL_DIR}/tools/patent_reader/vault/link_patent_notes.py \
   --focus-pub <本轮公开号> \
   -o tmp/patent_reader/${RUN}/patent_links.json
 ```
@@ -376,7 +376,7 @@ python3 ${CLAUDE_SKILL_DIR}/tools/patent_reader/vault/link_patent_notes.py \
 再执行：
 
 ```bash
-python3 ${CLAUDE_SKILL_DIR}/tools/patent_reader/vault/link_patent_notes.py \
+python ${CLAUDE_SKILL_DIR}/tools/patent_reader/vault/link_patent_notes.py \
   --focus-pub <本轮公开号> \
   --model-scores tmp/patent_reader/${RUN}/model_links.json \
   -o tmp/patent_reader/${RUN}/patent_links.json

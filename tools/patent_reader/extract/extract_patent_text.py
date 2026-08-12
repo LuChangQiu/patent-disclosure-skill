@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 从专利全文（.txt / .md / .pdf）抽取结构化片段，供专利通俗解读使用。
 

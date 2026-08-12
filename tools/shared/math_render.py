@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 r"""
 将 Markdown 中的 LaTeX 公式渲染为 PNG（matplotlib mathtext），**保留 `$...$` / `\(...\)` / `$$...$$` / `\[...\]` 原文**，
 图片引用写入 HTML 注释 ``<!-- ![...](path) -->``（预览不显示图，Word 仍嵌入）。

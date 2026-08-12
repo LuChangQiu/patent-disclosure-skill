@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 由 claim_tree.json 生成 mermaid 权利要求树（独立权=子图）。
 

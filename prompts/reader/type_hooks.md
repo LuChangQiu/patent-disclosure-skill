@@ -11,7 +11,7 @@
 推荐在取证后立刻跑：
 
 ```bash
-python3 ${CLAUDE_SKILL_DIR}/tools/shared/patent_type.py --pub <公开号>
+python ${CLAUDE_SKILL_DIR}/tools/shared/patent_type.py --pub <公开号>
 # 或：fetch_patent_pdf.py 成功时 stdout 已含 PATENT_TYPE: …
 ```
 

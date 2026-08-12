@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """扫描 Obsidian oa/cases（及本地回退目录）重建全部案例向量。
 
 用户确认后执行：

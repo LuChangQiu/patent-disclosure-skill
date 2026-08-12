@@ -5,7 +5,7 @@
 **解读模式**：有明确中国公开号时，可用文献种类码自动判别（`A/B`→发明，`U/Y`→实用新型，`S`→外观），无需用户口头声明：
 
 ```bash
-python3 ${CLAUDE_SKILL_DIR}/tools/shared/patent_type.py --pub CN209861402U
+python ${CLAUDE_SKILL_DIR}/tools/shared/patent_type.py --pub CN209861402U
 # fetch_patent_pdf.py 成功时 stdout / fetch_pdf_status.json 亦含 patent_type
 ```
 
@@ -23,9 +23,9 @@ python3 ${CLAUDE_SKILL_DIR}/tools/shared/patent_type.py --pub CN209861402U
 | `all`（默认） | 四类全选 |
 
 ```bash
-python3 ${CLAUDE_SKILL_DIR}/tools/crawl/cnipa_epub_search.py --type utility_model 卡扣
-python3 ${CLAUDE_SKILL_DIR}/tools/crawl/cnipa_epub_search.py --type design 灯具
-python3 ${CLAUDE_SKILL_DIR}/tools/crawl/cnipa_epub_search.py --type invention 调度
+python ${CLAUDE_SKILL_DIR}/tools/crawl/cnipa_epub_search.py --type utility_model 卡扣
+python ${CLAUDE_SKILL_DIR}/tools/crawl/cnipa_epub_search.py --type design 灯具
+python ${CLAUDE_SKILL_DIR}/tools/crawl/cnipa_epub_search.py --type invention 调度
 ```
 
 实现：`tools/shared/patent_type.py` + `tools/crawl/cnipa_epub_crawler.apply_epub_type_filter`。

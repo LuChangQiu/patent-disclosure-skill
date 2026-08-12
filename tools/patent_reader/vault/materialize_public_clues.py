@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 对已有解读笔记落地公开线索增强：筛选(≤3)→clues/→附录 B→旁注→刷新 Canvas。
 

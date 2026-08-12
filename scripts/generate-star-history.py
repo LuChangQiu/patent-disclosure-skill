@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """Generate a static star-history SVG from GitHub stargazer timestamps."""
 
 from __future__ import annotations

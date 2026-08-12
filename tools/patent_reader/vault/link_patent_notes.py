@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 扫描 Obsidian 库内专利解读笔记，按规则（+可选模型分）建立关联并回写。
 

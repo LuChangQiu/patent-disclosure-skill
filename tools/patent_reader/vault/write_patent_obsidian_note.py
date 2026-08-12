@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 将已通过 lint 的专利解读笔记写入 Obsidian 库或 outputs/patent_reader/，
 并：初始化库资源、术语 stub、增强 frontmatter、生成 Canvas、附图闸门、更新索引。

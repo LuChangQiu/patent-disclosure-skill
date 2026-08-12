@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """校验案件 formula_plan：范式 id、禁装饰音、数值例等。
 
 用法：

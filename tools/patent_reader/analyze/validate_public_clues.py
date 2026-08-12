@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 校验并筛选 Agent 生成的 public_clues.json（附录 B 线索）。
 

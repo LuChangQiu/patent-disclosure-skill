@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """加载 / 合并发明交底公式推荐范式。
 
 用法：

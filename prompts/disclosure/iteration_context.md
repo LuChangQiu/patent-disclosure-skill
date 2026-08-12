@@ -53,7 +53,7 @@
 **推荐**：在写出交付文件并生成 Word 之后，执行 **`Bash`**：
 
 ```text
-python3 ${CLAUDE_SKILL_DIR}/tools/shared/iteration_dialog_log.py --case-dir "{案件目录}" --kind merge --user "{用户说明摘要}" --summary "{摘要摘录}" --artifacts "{案件名_时间戳.md},{案件名_时间戳.docx}"
+python ${CLAUDE_SKILL_DIR}/tools/shared/iteration_dialog_log.py --case-dir "{案件目录}" --kind merge --user "{用户说明摘要}" --summary "{摘要摘录}" --artifacts "{案件名_时间戳.md},{案件名_时间戳.docx}"
 ```
 
 `--kind` 纠正时用 `correct`。若无法执行脚本，须 **`Read`** 已有 `交底书修订对话记录.md`（若无则 **`Write`** 创建），再 **`StrReplace`** 或等价方式在文末**追加**与上表结构相同的一条（时间须真实）。

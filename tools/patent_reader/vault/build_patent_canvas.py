@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 生成专利解读 JSON Canvas（公开号中心，连相关笔记与术语）。
 
