@@ -10,14 +10,15 @@
 **连续多行正文**（中间无空行、且非列表/标题等）时，**每一行**输出为 Word 中**独立一段**，
 以便「（1）…（2）…」等分条换行；若须在同一段内接排，请写**同一行**内或用 Markdown 空行分隔逻辑段。
 
-定稿宜先用同目录 **`mermaid_render.py`** 将 **mermaid** 转为 PNG；**LaTeX 公式**优先经 **`math_to_omml.py`**（``latex2mathml``）写入 **可编辑 Office Math**，失败再回退 **`math_render.py` PNG** 或原文。
+定稿宜先用同目录 **`mermaid_render.py`** 将 **mermaid** 转为 PNG；**LaTeX 公式**优先经 **`math_to_omml.py`**（``latex2mathml``）写入 **可编辑 Office Math**，失败则留原文。公式 PNG 须 ``--math-render``（可选 ``matplotlib``），且仅在用户确认后安装。
 
 用法：
   python md_to_docx.py --input disclosure.md --output disclosure.docx
   python md_to_docx.py -i a.md -o b.docx --base-dir .   # 解析图片相对路径
   python md_to_docx.py -i a.md -o a.docx --no-omml      # 仅 PNG/原文（旧行为）
+  python md_to_docx.py -i a.md -o a.docx --math-render  # OMML 失败时用公式 PNG（须 matplotlib）
 
-依赖：python-docx；原生公式另需 ``pip install latex2mathml``（可选，缺则自动 PNG 回退）
+依赖：python-docx + latex2mathml（根目录 requirements.txt）；matplotlib 为可选
 """
 
 from __future__ import annotations
@@ -25,12 +26,18 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 from docx.shared import Inches, Pt, RGBColor
+
+try:
+    from stdio_utf8 import ensure_utf8_stdio
+except ImportError:
+    from tools.shared.stdio_utf8 import ensure_utf8_stdio
 
 # 插图最大尺寸（英寸）：在常见 A4、默认边距下保证整图可见、按比例缩放（不过宽也不过高）。
 _DEFAULT_IMAGE_MAX_W_IN = 5.5
@@ -55,6 +62,66 @@ _INLINE_MATH_WITH_HIDDEN_IMG_RE = re.compile(
 
 # 模块级默认：可由 convert / CLI 覆盖
 _PREFER_OMML = True
+_SNIPPET_MAX = 120
+
+
+@dataclass
+class MathOutcomeStats:
+    """一次 convert 的公式去向（仅统计尝试了 OMML 的条目）。"""
+
+    omml: int = 0
+    png: int = 0
+    text: int = 0
+    text_latex: list[str] = field(default_factory=list)
+
+    def reset(self) -> None:
+        self.omml = 0
+        self.png = 0
+        self.text = 0
+        self.text_latex.clear()
+
+    def record(self, latex: str, strategy: str) -> None:
+        if not _PREFER_OMML:
+            return
+        if strategy == "omml":
+            self.omml += 1
+            return
+        if strategy == "png":
+            self.png += 1
+            return
+        if strategy == "text":
+            self.text += 1
+            snippet = (latex or "").strip().replace("\n", " ")
+            if len(snippet) > _SNIPPET_MAX:
+                snippet = snippet[: _SNIPPET_MAX - 3] + "..."
+            if snippet:
+                self.text_latex.append(snippet)
+
+    def report(self) -> None:
+        if self.omml + self.png + self.text == 0:
+            return
+        print(
+            f"MATH: omml={self.omml} png={self.png} text={self.text}",
+            file=sys.stderr,
+        )
+        for snippet in self.text_latex:
+            print(f"OMML_FAIL: {snippet}", file=sys.stderr)
+        if self.text:
+            print(
+                f"omml_text_fallback={self.text}",
+                file=sys.stderr,
+            )
+        print(
+            f"[md_to_docx] 公式：OMML {self.omml} 成功，PNG {self.png}，原文 {self.text}",
+            file=sys.stderr,
+        )
+
+
+_MATH_STATS = MathOutcomeStats()
+
+
+def get_math_stats() -> MathOutcomeStats:
+    return _MATH_STATS
 
 
 def _try_append_omml(paragraph, latex: str, *, display: bool) -> bool:
@@ -95,6 +162,7 @@ def _add_block_equation(
     p.paragraph_format.space_before = Pt(3)
     p.paragraph_format.space_after = Pt(6)
     if latex and _try_append_omml(p, latex, display=True):
+        _MATH_STATS.record(latex, "omml")
         return "omml"
     # OMML 失败：去掉空段，改 PNG / 原文
     p_element = p._element
@@ -113,8 +181,10 @@ def _add_block_equation(
                 image_max_w_in=image_max_w_in,
                 image_max_h_in=image_max_h_in,
             )
+            _MATH_STATS.record(latex, "png")
             return "png"
     _add_math_fallback_block(doc, raw_fallback_lines or ([latex] if latex else [""]))
+    _MATH_STATS.record(latex, "text")
     return "text"
 
 
@@ -551,11 +621,16 @@ def _add_rich_content_to_paragraph(
                 run.font.color.rgb = RGBColor(0x33, 0x33, 0x33)
         elif kind == "math_omml":
             latex = payload[0]
-            if not _try_append_omml(paragraph, latex, display=False):
+            if _try_append_omml(paragraph, latex, display=False):
+                _MATH_STATS.record(latex, "omml")
+            else:
                 _add_inline_to_paragraph(paragraph, text[start:end], mono=mono)
+                _MATH_STATS.record(latex, "text")
         elif kind == "math_omml_or_img":
             latex, alt, src = payload[0], payload[1], payload[2]
-            if not _try_append_omml(paragraph, latex, display=False):
+            if _try_append_omml(paragraph, latex, display=False):
+                _MATH_STATS.record(latex, "omml")
+            else:
                 _embed_from_image_ref(
                     alt,
                     src,
@@ -564,6 +639,7 @@ def _add_rich_content_to_paragraph(
                     image_max_w_in=image_max_w_in,
                     image_max_h_in=image_max_h_in,
                 )
+                _MATH_STATS.record(latex, "png")
         else:
             alt, src = payload[0], payload[1]
             _embed_from_image_ref(
@@ -879,6 +955,7 @@ def convert_md_to_docx(
 ) -> Document:
     global _PREFER_OMML
     _PREFER_OMML = bool(prefer_omml)
+    _MATH_STATS.reset()
     doc = Document()
     # 默认正文样式
     try:
@@ -1138,6 +1215,7 @@ def convert_md_to_docx(
 
 
 def main(argv: list[str] | None = None) -> int:
+    ensure_utf8_stdio()
     p = argparse.ArgumentParser(description="Markdown → Word（标题样式映射）")
     p.add_argument("-i", "--input", required=True, help="输入 .md 路径")
     p.add_argument("-o", "--output", required=True, help="输出 .docx 路径")
@@ -1161,9 +1239,14 @@ def main(argv: list[str] | None = None) -> int:
         help=f"插图最大高度（英寸，默认 {_DEFAULT_IMAGE_MAX_H_IN}），避免竖图仅按宽度缩放后超出单页可视区域",
     )
     p.add_argument(
+        "--math-render",
+        action="store_true",
+        help="预渲染公式 PNG 供 OMML 失败时嵌入（须 matplotlib；默认跳过）",
+    )
+    p.add_argument(
         "--no-math-render",
         action="store_true",
-        help="不自动调用 math_render（默认会先渲染 $ / $$ 公式为 PNG，供 OMML 失败时回退）",
+        help=argparse.SUPPRESS,  # 旧开关；现默认已跳过公式 PNG
     )
     p.add_argument(
         "--no-omml",
@@ -1184,7 +1267,7 @@ def main(argv: list[str] | None = None) -> int:
         md_text = in_path.read_text(encoding="utf-8", errors="replace")
         print("警告：输入文件含非 UTF-8 字节，已使用替换字符解码后继续转换。", file=sys.stderr)
 
-    if not args.no_math_render:
+    if args.math_render:
         md_text = _maybe_render_math_md(md_text, base)
 
     doc = convert_md_to_docx(
@@ -1197,7 +1280,9 @@ def main(argv: list[str] | None = None) -> int:
     out_path = Path(args.output).resolve()
     out_path.parent.mkdir(parents=True, exist_ok=True)
     doc.save(str(out_path))
+    print(f"DOCX: ok=1", file=sys.stderr)
     print(f"已写入: {out_path}")
+    _MATH_STATS.report()
     return 0
 
 

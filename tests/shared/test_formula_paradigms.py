@@ -20,6 +20,7 @@ class FormulaParadigmsTests(unittest.TestCase):
         self.assertGreaterEqual(len(cfg["paradigms"]), 15)
         self.assertTrue(paradigm_by_id(cfg, "weighted_sum"))
         self.assertTrue(paradigm_by_id(cfg, "dual_threshold"))
+        self.assertTrue(paradigm_by_id(cfg, "stoichiometric_reaction"))
         self.assertTrue(cfg.get("combos"))
 
     def test_case_override_merges(self):

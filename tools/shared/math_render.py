@@ -13,7 +13,8 @@ r"""
   python tools/shared/math_render.py -i draft.md -o draft_with_math.md
   python tools/shared/math_render.py -i draft.md -o out.md --assets-dir math_figures
 
-依赖：``pip install matplotlib``（见仓库根 ``requirements.txt``）。
+依赖：``pip install matplotlib``（**可选**，不在根目录 ``requirements.txt`` 默认列表中）。
+OMML 失败且用户确认后才安装；见 ``md_to_docx.py --math-render``。
 """
 from __future__ import annotations
 
@@ -21,6 +22,11 @@ import argparse
 import re
 import sys
 from pathlib import Path
+
+try:
+    from stdio_utf8 import ensure_utf8_stdio
+except ImportError:
+    from tools.shared.stdio_utf8 import ensure_utf8_stdio
 
 _DEFAULT_ASSETS = "math_figures"
 _INLINE_RE = re.compile(
@@ -374,6 +380,7 @@ def render_markdown_math(
 
 
 def main(argv: list[str] | None = None) -> int:
+    ensure_utf8_stdio()
     p = argparse.ArgumentParser(description="Markdown LaTeX 公式 → PNG")
     p.add_argument("-i", "--input", required=True, type=Path)
     p.add_argument("-o", "--output", required=True, type=Path)
@@ -411,6 +418,7 @@ def main(argv: list[str] | None = None) -> int:
         inline_fontsize=args.inline_fontsize,
     )
     out_path.write_text(new_md, encoding="utf-8")
+    print(f"MATH_PNG: ok={ok} fail={failed}", file=sys.stderr)
     msg = f"已写入 {out_path}（公式：{ok} 处已转为 PNG"
     if failed:
         msg += f"，{failed} 处失败已保留原文"

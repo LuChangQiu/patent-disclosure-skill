@@ -60,19 +60,43 @@ git clone <本仓库 URL> "$env:USERPROFILE\.cursor\skills\patent-disclosure-ski
 
 Cursor 也会扫描 **`~/.claude/skills/`**、项目内 **`.claude/skills/`** 等路径；详见 Cursor 官方文档与当前版本设置项。
 
-## 可选依赖
+## 默认交底需要什么（发明主路径）
 
-若仅使用交底书 Markdown 流程，不必安装 Python。
+技能默认按**发明交底**走：定稿要 `.md` + `.docx`，3.2 / 3.4 框图要出 PNG，Step 5 优先国知局检索。这条路径**需要**：
 
-若需使用 **`tools/shared/md_to_docx.py`**（Markdown → Word）、**`tools/shared/docx_to_md.py`**（Word → Markdown + 图片）或 **`tools/shared/pptx_to_md.py`**（PPT → Markdown + 图片，供扫描）：
+1. **Python 3.9+**（及 pip）
+2. 在技能根目录安装依赖（含 `python-docx`、`playwright` 等）：
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **本机 Google Chrome 或 Microsoft Edge**（推荐，多数电脑已有）。出图与查新共用，**不必**再装 Node / npm / mmdc。
+
+探测是否已能启动浏览器：
 
 ```bash
-pip install -r requirements.txt
+python tools/shared/browser.py --probe
 ```
 
-**发明**交底定稿须同时产出 **.md + .docx**，且将 **mermaid**（**3.2 系统框图**与 **3.4 流程图**）经 **`tools/shared/mermaid_render.py`** 转为 PNG 嵌入。**mermaid** 须 **Node.js**：在 **`tools/`** 执行 **`npm install`**（含 **`puppeteer`**）；若 **`mmdc`** 报找不到 Chrome，再执行 **`npx puppeteer browsers install chrome-headless-shell`**。详见 **`tools/README.md`**。
+- `ok=true`：可直接定稿出图、跑国知局检索。
+- 没有 Playwright 包：再执行一次上面的 `pip install -r requirements.txt`。
+- 本机既无 Chrome 也无 Edge：才执行 `python -m playwright install chromium`（整机一次即可）。
 
-**实用新型 / 外观**定稿以各类型 `prompts/disclosure/utility_model|design/disclosure_builder.md` 为准：填表产出 `structure_schema`/`appearance_schema` + **`figure_plan.yaml`**，成文只嵌清单入文图（结构图或视图；docx 对实用建议、对外观可选）。
+无可用浏览器时，发明仍可先交 **Markdown**（mermaid 围栏保留）；Word 里框图可能先是代码块，补齐浏览器后重跑 `tools/shared/mermaid_render.py` 即可。
+
+公式进 Word 走 **OMML**（`latex2mathml`，已在 `requirements.txt`）。**不要**为默认交底安装 matplotlib。仅当定稿 stderr 出现 `omml_text_fallback`、且用户回复「是」之后，才：
+
+```bash
+pip install matplotlib
+python tools/shared/md_to_docx.py -i 定稿.md -o 定稿.docx --base-dir 定稿目录 --math-render
+```
+
+**实用新型 / 外观**定稿以各类型 `prompts/disclosure/utility_model|design/disclosure_builder.md` 为准：填表产出 `structure_schema`/`appearance_schema` + **`figure_plan.yaml`**，成文只嵌清单入文图（结构图或视图；docx 对实用建议、对外观可选）。不跑发明 mermaid 时，仍建议装 `requirements.txt`（扫 Word/PPT、出 docx）。
+
+仅在编辑器里**手写** Markdown、完全不跑仓库脚本时，才不必装 Python。
+
+细则见 **`tools/README.md`**。
 
 ## 可选：STEP 多视角解析（默认关闭）
 
@@ -115,14 +139,15 @@ python tools/shared/structure_lineart_gate.py --enable-structure-lineart --case-
 
 ```bash
 pip install -r tools/crawl/requirements-cnipa.txt
-python -m playwright install chromium
-# 按类型（与 intake 一致）：invention | utility_model | design | all
+python tools/shared/browser.py --probe
+# 仅当 probe 显示无 Chrome/Edge 且无自带 Chromium 时：
+# python -m playwright install chromium
 python tools/crawl/cnipa_epub_search.py --type utility_model 卡扣
 ```
 
-**Windows 终端中文**：`cnipa_epub_search.py` / `cnipa_epub_crawler.py` 已对 stdout/stderr 尝试 **UTF-8**（`reconfigure`）。若仍乱码，可在运行前执行 **`chcp 65001`**，或设置环境变量 **`PYTHONUTF8=1`**，以便复制 **`EPUB_HITS_JSON:`** 一行给 Agent 时不误判为失败。
+**Windows 终端**：定稿 / 查新脚本会把 stdout、stderr 设为 UTF-8，子进程带 `PYTHONUTF8=1`。Agent **以退出码和机读前缀为准**（`EPUB_HITS_JSON:`、`PROBE:`、`MERMAID:`、`DOCX:`、`MATH:`）；stderr 有中文或 PowerShell `NativeCommandError` **不等于**失败。不必先 `chcp 65001`。若仍乱码，可设 **`PYTHONUTF8=1`**，且不要用 **`2>&1`** 把 JSON 混进错误流。
 
-与主流程 `requirements.txt` **独立**；未安装时 Step 5 仍可按该 prompt 降级为 **WebSearch**（如 Google 学术）。
+`playwright` 已写入根目录 `requirements.txt`。若已按上文装过主依赖，**不必**再为查新单独 pip 一遍；`tools/crawl/requirements-cnipa.txt` 仅在只装爬虫、不装整份主依赖时使用。未装或探测失败时，Step 5 仍可按该 prompt 降级为 **WebSearch**（如 Google 学术）。
 
 ## 可选：审查答复案例库（模式 D，默认关闭）
 

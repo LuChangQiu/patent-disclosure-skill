@@ -77,7 +77,7 @@ Agent **落盘时**即采用上述命名，并在回复中写明路径，便于�
 
 ## 7.4 系统框图与流程图要点
 
-- **系统框图与流程图**均仅用 **fenced mermaid**（本地 `mmdc` 渲染，不依赖外网 PlantUML）；Word 中以 PNG 为准，**无需**再附 ASCII 文字框图
+- **系统框图与流程图**均仅用 **fenced mermaid**（`mermaid_render.py` 经 Playwright 出 PNG，不依赖 Node/mmdc 或外网 PlantUML）；Word 中以 PNG 为准，**无需**再附 ASCII 文字框图
 - mermaid 内节点标签用简短中文/数字，避免 ①②③。可另写简短「流程说明」段落概括各步，**不得**用 ASCII 框线箭头代替图示
 
 ## 7.5 脱敏要求
@@ -98,7 +98,7 @@ Agent **落盘时**即采用上述命名，并在回复中写明路径，便于�
 
 1. **`Read`** `references/formulas/paradigms.yaml`（或先 `python tools/shared/formula_paradigms.py list [--case-dir …]` 看合并结果）。  
 2. 在案件目录写出 **`formula_plan.yaml`**（合同：`references/schemas/formula_plan.schema.yaml`）：选定 `paradigm_ids` / 可选 `combo_id`、主式人话、本案符号、**可代入数值例**。  
-3. 校验：`python tools/shared/check_formula_plan.py -i …/formula_plan.yaml`；**不通过不得写 3.4.1**。  
+3. 校验：`python tools/shared/check_formula_plan.py -i …/formula_plan.yaml --eval`；**不通过不得写 3.4.1**。简单式由脚本代入 `numeric_example` 核对；求和/范数/分位等复杂式脚本会警告跳过，须手算。  
 4. 再写正文 3.4.1：只展开计划中的式；打分与限频触发宜分式 (1)/(2)。  
 5. 建议顺序：**流程文字 → 数值走查（可放第六章草稿）→ 锁定公式 → 回填符号表 / 3.5**。
 
@@ -139,12 +139,31 @@ Agent **落盘时**即采用上述命名，并在回复中写明路径，便于�
 
 须**同时**交付：
 
-1. **Markdown**：定稿 `.md` **保留** `` ```mermaid`` 围栏源码，并含 ``<!-- ![图示](…png) -->`` 注释引用（由 `mermaid_render.py` 生成）。
+1. **Markdown**：定稿 `.md` **保留** `` ```mermaid`` 围栏源码；能出图时含 ``<!-- ![图示](…png) -->`` 注释引用（由 `mermaid_render.py` 生成）。
 2. **Word**：对上一文件执行 `md_to_docx.py`，或使用一条命令：
 
-`python tools/shared/mermaid_render.py -i <含图示的草稿.md> -o "<案件名_YYYYMMDDHHmmss>.md"`（默认在同目录生成**同名** `.docx`；可用 `--docx` 指定路径，`--no-docx` 跳过 Word。Word 失败时见终端提示的手动命令。）
+`python tools/shared/mermaid_render.py -i <含图示的草稿.md> -o "<案件名_YYYYMMDDHHmmss>.md"`（默认在同目录生成**同名** `.docx`；可用 `--docx` 指定路径，`--no-docx` 跳过 Word。Word 失败时见终端提示的手动命令。**默认不出公式 PNG、不安装 matplotlib**。）
 
-（mermaid 依赖 Node/mmdc、`pip install -r requirements.txt` 见 `tools/README.md`。）
+（mermaid 出图：Playwright + 内置 `tools/shared/vendor/mermaid.min.js`，与查新共用浏览器，见 `tools/shared/browser.py`。**禁止**为出图执行 `npm` / `npx` / `playwright install chromium`（除非 `--probe` 显示本机无 Chrome/Edge 且无自带 Chromium）。无可用浏览器时**仍须交付 .md**（围栏保留）；Word 可生成但框图可能为代码块，告知用户补浏览器后可重跑本脚本。）
+
+**判读（stderr ≠ 失败）**：以 **退出码 0** 和机读前缀为准：`MERMAID: ok=`、`DOCX: ok=1`、`MATH:`、`omml_text_fallback=`。PowerShell 红字 / `NativeCommandError` / 中文乱码 **不是**失败；**禁止**因此重跑安装或认定 Word 未生成。`DOCX: ok=0` 才按终端里的手动 `md_to_docx.py` 命令补做。
+
+### OMML 失败后的公式 PNG（可选，默认关）
+
+Word 公式主路径为 `latex2mathml` → 可编辑 OMML；失败则 **留 LaTeX 原文**。定稿默认 **不** 预渲染公式 PNG，**禁止**为此自动 `pip install matplotlib`。
+
+若 stderr 出现 `omml_text_fallback=` 或 `OMML_FAIL:` 或 `MATH: ... text=`（`text`>0）：
+
+1. **先完成交付**（仍须写明 `.md` / `.docx` 路径）。
+2. 在**本轮回复末尾**反问 **一次**（请回 **是** / **否**），列出失败公式摘要；说明须额外安装 matplotlib（约 100MB，含 numpy 等），图片在 Word 中不可再编辑。
+3. 未得 **是**（含未回复）：保持当前 docx，**禁止**安装 matplotlib。
+4. 用户回 **是**：本会话最多一次 `pip install matplotlib`（已装则跳过），再对**同一份已定稿 md** 覆盖同名 Word（不必重跑 mermaid）：
+
+   `python tools/shared/md_to_docx.py -i "<同名.md>" -o "<同名.docx>" --base-dir "<md 所在目录>" --math-render`
+
+   仍走 OMML 优先；PNG 也画不出的保持原文，**不要再问第二轮**。
+
+脚本禁止 `input()`；反问只在对话里进行。全成功则不问。
 
 ## 7.6 交付回复：权利要求偏向点（建议交互，必做）
 

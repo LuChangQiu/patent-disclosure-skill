@@ -113,7 +113,7 @@ flowchart TB
 #### 流程图
 
 - 使用 **fenced mermaid** 代码块；**不要** ASCII 文字/箭头流程图。
-- 定稿交付前用仓库 **`tools/shared/mermaid_render.py`**（本地 `mmdc`）转为 PNG 并**默认**生成 Word；失败时按终端提示用 **`md_to_docx.py`** 手动转换。
+- 定稿交付前用仓库 **`tools/shared/mermaid_render.py`**（Playwright + 内置 mermaid.js）转为 PNG 并**默认**生成 Word；失败时按终端提示用 **`md_to_docx.py`** 手动转换。
 
 #### 流程说明
 

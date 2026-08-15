@@ -5,7 +5,7 @@
 | 目录 | 内容 |
 |------|------|
 | **`crawl/`** | 国知局公布公告检索：`cnipa_epub_*.py`、`requirements-cnipa.txt` |
-| **`shared/`** | 公用：`docx/pptx/md` 转换、`mermaid`/`math`/`math_to_omml`（OMML）、`formula_paradigms` / `check_formula_plan`、`iteration_dialog_log`、`patent_type.py`、**可选** STEP / 线稿门禁 |
+| **`shared/`** | 公用：`browser.py`（Chrome→Edge→Chromium）、`docx/pptx/md` 转换、`mermaid`/`math`/`math_to_omml`（OMML）、`formula_paradigms` / `check_formula_plan`、`iteration_dialog_log`、`patent_type.py`、**可选** STEP / 线稿门禁 |
 | **`patent_reader/`** | 专利通俗解读：`shared/` · `extract/` · `analyze/` · `vault/`（见该目录 README） |
 | **`oa/`** | 模式 D 审查答复：嵌入配置、sqlite-vec 入库/检索（见该目录 README） |
 
@@ -15,12 +15,12 @@
 
 | 脚本 | 作用 |
 |------|------|
-| **`crawl/cnipa_epub_search.py`** | **（Step 5 优先）** 一步拉取+解析，不落盘；**`--type invention\|utility_model\|design\|all`** 对应首页四类勾选；Agent 分次一词并合并 JSON。 |
+| **`crawl/cnipa_epub_search.py`** | **（Step 5 优先）** 一步拉取+解析，不落盘；**`--type invention\|utility_model\|design\|all`** 对应首页四类勾选；一次进程传入多词、同一浏览器内逐词检索并合并 JSON。 |
 | **`crawl/cnipa_epub_crawler.py`** | 拉取并默认保存结果页 HTML；同样支持 `--type`。 |
 | **`crawl/cnipa_epub_parse.py`** | 仅解析已保存 HTML。 |
 | **`shared/patent_type.py`** | 类型别名、国知局 checkbox、Google Patents 查询提示；**`--pub` 按文献种类码推断类型**（解读 Schema 挂钩）。 |
 
-依赖：`pip install -r tools/crawl/requirements-cnipa.txt` 与 `python -m playwright install chromium`。类型检索说明见 **`references/patent_type_search.yaml`**、**`prompts/disclosure/prior_art_search.md`**。
+依赖：`pip install playwright`（或根目录 `requirements.txt`）。浏览器见 **`tools/shared/browser.py`**（系统 Chrome → Edge → 自带 Chromium）。类型检索说明见 **`references/patent_type_search.yaml`**、**`prompts/disclosure/prior_art_search.md`**。
 
 抓取失败时降级 **WebSearch**（Google 学术**无**专利类型过滤；Google Patents 支持 PATENT/DESIGN，实用新型靠关键词+国知局）。
 
@@ -55,11 +55,11 @@ python tools/shared/step_to_views.py --enable-step-parse -i a.step -o outputs/ca
 | **`references/formulas/paradigms.yaml`** | 默认可扩展范式库 |
 | **`references/schemas/formula_plan.schema.yaml`** | 案件 `formula_plan.yaml` 合同 |
 | **`shared/formula_paradigms.py`** | `list` / `show` / `combos`（支持案件目录覆盖） |
-| **`shared/check_formula_plan.py`** | 校验选题 id、禁装饰音、数值例 |
+| **`shared/check_formula_plan.py`** | 校验选题 id、禁装饰音、数值例；`--eval` 简单式代算；化学守恒 / 量纲粗检（按 tag） |
 
 ```bash
 python tools/shared/formula_paradigms.py list
-python tools/shared/check_formula_plan.py -i outputs/case/formula_plan.yaml
+python tools/shared/check_formula_plan.py -i outputs/case/formula_plan.yaml --eval
 ```
 
 成文纪律见 **`prompts/disclosure/invention/disclosure_builder.md` §7.7**。
@@ -100,47 +100,25 @@ python tools/shared/structure_lineart_gate.py --enable-structure-lineart --case-
 
 ## mermaid_render.py — mermaid：图示 → PNG + 定稿 Markdown + **默认生成 Word**
 
-将 fenced **mermaid**（`` ```mermaid`` ``）逐块交给 **`mmdc`** 渲染为 PNG；输出 `.md` 中**保留** mermaid 围栏源码，并追加 ``<!-- ![图示 n](mermaid_figures/…) -->`` 供 **`md_to_docx.py`** 嵌入 Word（Word **仅**嵌 PNG，不写 mermaid 代码块）。**3.2 系统框图**与 **3.4 流程图**均用 mermaid（`flowchart` / `subgraph` 等），交底书正文**不再**要求单独的文字框图或 PlantUML。
+将 fenced **mermaid**（`` ```mermaid`` ``）逐块经 **Playwright + 内置 `vendor/mermaid.min.js`** 渲染为 PNG；输出 `.md` 中**保留** mermaid 围栏源码，并追加 ``<!-- ![图示 n](mermaid_figures/…) -->`` 供 **`md_to_docx.py`** 嵌入 Word（Word **仅**嵌 PNG，不写 mermaid 代码块）。**3.2 系统框图**与 **3.4 流程图**均用 mermaid（`flowchart` / `subgraph` 等），交底书正文**不再**要求单独的文字框图或 PlantUML。
 
-**生图失败降级**：某一围栏 `mmdc` 失败时**不中断**——该处**保留**原 `` ```mermaid`` … `` ``` `` 源码；其余块照常出图。仍写出定稿 `.md`，并**照常尝试**生成 Word（未出图块在 Word 中为 **Consolas 代码块**，与 `md_to_docx` 行为一致）。
+**生图失败降级**：某一围栏失败时**不中断**——该处**保留**原 `` ```mermaid`` … `` ``` `` 源码；其余块照常出图。仍写出定稿 `.md`，并**照常尝试**生成 Word（未出图块在 Word 中为 **Consolas 代码块**）。无可用浏览器时同样保留围栏，不阻塞 Markdown。
 
-### 依赖：mermaid（须 Node.js + `mmdc`）
+### 依赖：mermaid（Playwright，无需 Node）
 
-| 方式 | 安装 | 说明 |
-|------|------|------|
-| **本地 npm（推荐）** | **Node.js** + 本目录 `npm install`（见 `package.json`） | 优先使用 `tools/node_modules/.bin/mmdc`，避免每次 npx 拉包 |
-| **npx** | 未执行 `npm install` 时由脚本调用 `npx -y @mermaid-js/mermaid-cli mmdc` | 首次可能较慢 |
-| **全局 npm** | `npm install -g @mermaid-js/mermaid-cli` | 提供 **PATH** 上的 `mmdc` |
+与国知局查新**共用** `tools/shared/browser.py`：系统 **Chrome → Edge → Playwright 自带 Chromium**。仓库已内置 `tools/shared/vendor/mermaid.min.js`。
 
-mermaid 脚本按顺序查找：`tools/node_modules/.bin/mmdc` → **PATH** 上的 `mmdc` → `npx`。
+| 需要 | 说明 |
+|------|------|
+| `pip install playwright` | 已写入根目录 `requirements.txt` |
+| 本机 Chrome 或 Edge | **推荐**；有则不必再下 Chromium |
+| `python -m playwright install chromium` | **仅当**本机无 Chrome/Edge 时 |
 
-生成 Word 仍需：`pip install -r requirements.txt`（与上表无关）。
+探测：`python tools/shared/browser.py --probe`。**禁止**为出图执行 `npm install` / `npx -y @mermaid-js/mermaid-cli`。`tools/package.json` 仅为旧 mmdc 可选遗留，主路径不使用。
 
-**npm 推荐（本地 CLI）**：
+生成 Word 仍需：`pip install -r requirements.txt`（python-docx 等）。
 
-```bash
-cd tools
-npm install
-```
-
-`package.json` 已包含 **`puppeteer`**（`@mermaid-js/mermaid-cli` 的 peer）。**Puppeteer 23+** 可能不会在 `npm install` 时自动下载浏览器；若自检或 `mmdc` 报错 **Could not find Chrome**，在 **`tools/`** 再执行：
-
-```bash
-npx puppeteer browsers install chrome-headless-shell
-```
-
-（或按报错提示选用 `chrome` 等；详见 [Puppeteer 文档](https://pptr.dev/)。）
-
-### mermaid CLI 与手动试转
-
-**`mermaid_render.py` 与 11.x 一致**：在 **`mmdc -i <.mmd> -o <.png> -b white`** 基础上默认追加 **`-s 2 -w 1400 -H 1050`**（更高像素密度与视口，系统框图在 Word 中更清晰）。需要再锐化可 **`--mmdc-scale 3`**（PNG 更大）；恢复接近旧版可 **`--mmdc-scale 1 --mmdc-width 800 --mmdc-height 600`**。  
-若某处写的是 `npx -y @mermaid-js/mermaid-cli -i …`，**少了子命令 `mmdc`**，参数会错位；正确示例：
-
-```bash
-npx -y @mermaid-js/mermaid-cli mmdc -i sample.mmd -o sample.png -b white
-```
-
-可自建极简 `sample.mmd`（如一行 `flowchart LR; A-->B`）试转；能出 PNG 则说明 **mmdc + Chrome** 正常，否则按上文安装 **`puppeteer` 浏览器**。
+默认视口 **1400×1050**、`device_scale_factor=2`（历史参数名 `--mmdc-scale` / `--mmdc-width` / `--mmdc-height` 仍可用）。再锐化可 `--mmdc-scale 3`。
 
 ### 用法
 
@@ -163,18 +141,20 @@ python tools/shared/mermaid_render.py -i draft.md -o out/一种XXX方法及系�
 
 **Word 生成失败**（缺依赖、版式报错等）时：脚本仍以退出码 **0** 结束（Markdown 已成功）；stderr 会打印 **`md_to_docx.py` 的手动命令**，请复制执行。
 
-Windows 上若仅装 Node 未执行 `npm install`，脚本会通过 `npx -y @mermaid-js/mermaid-cli mmdc` 调用（首次可能较慢）。
+无可用浏览器时仍写出 Markdown（保留 mermaid 围栏）；补齐 Chrome/Edge 或 Chromium 后可重跑本脚本出 PNG。
 
 ### 与交底书约定
 
 - 技能要求定稿**同时**交付 **Markdown + Word**，且 **`-o` 主文件名须含 `_{YYYYMMDDHHmmss}`**（`prompts/disclosure/invention/disclosure_builder.md` §7.3 第 5 点，含首次定稿）；**3.2 系统框图**与 **3.4 流程图**均用 fenced mermaid，**不要** ASCII 文字流程图或框图。
 - 交付代理人前：运行 `mermaid_render.py` 一步即可（默认再调 `md_to_docx.py`）；若 Word 失败，按 stderr 提示手动执行 `md_to_docx.py`。
+- **判读**：`MERMAID:` / `DOCX: ok=1` 且退出码 0 即为成功；stderr 中文或 PowerShell 红字不是失败。`DOCX: ok=0` 才算 Word 失败。
+- 默认**不**预渲染公式 PNG。Word 公式走 OMML；stderr 若有 `omml_text_fallback` / `OMML_FAIL:`，须用户确认后再 `pip install matplotlib` 并以 `--math` / `--math-render` 重出 Word。
 
 ---
 
 ## math_to_omml.py — LaTeX → 可编辑 Office Math
 
-``latex2mathml`` → MathML → Word ``m:oMath`` / ``m:oMathPara``。不依赖本机 TeX。由 **`md_to_docx.py`** 默认调用。
+``latex2mathml`` → MathML → Word ``m:oMath`` / ``m:oMathPara``。不依赖本机 TeX。由 **`md_to_docx.py`** 默认调用。失败则留 LaTeX 原文；stderr 会列出 `omml_text_fallback`。
 
 ```bash
 pip install latex2mathml   # 已写入根目录 requirements.txt
@@ -182,20 +162,22 @@ pip install latex2mathml   # 已写入根目录 requirements.txt
 
 ---
 
-## math_render.py — LaTeX 公式 → PNG（OMML 回退）
+## math_render.py — LaTeX 公式 → PNG（可选回退）
 
 将 Markdown 中的 **LaTeX 公式**用 **matplotlib mathtext** 渲染为 PNG；**保留 LaTeX 原文**，图片引用写入 HTML 注释，供 **`md_to_docx.py`** 在 **OMML 失败时**嵌入。
+
+**默认不定稿出公式 PNG**，也不把 matplotlib 写入主 `requirements.txt`。仅当用户确认后：`pip install matplotlib`，再 `md_to_docx.py --math-render` 或 `mermaid_render.py --math`。
 
 **Mermaid 框图**：``mermaid_render.py`` **保留** `` ```mermaid`` 源码，并追加 ``<!-- ![图示 n](mermaid_figures/...) -->``。
 
 **mathtext 兼容**：``\ge``→``\geq`` 等；``\tag{1}`` 转式末 ``(1)``。
 
-**Word 主路径**：默认 **OMML 优先**；PNG 仅回退。``--no-omml`` 可强制旧行为。
+**Word 主路径**：默认 **OMML 优先**；无 PNG 时失败留原文。``--no-omml`` 可强制旧行为。
 
-### 依赖
+### 依赖（可选）
 
 ```bash
-pip install -r requirements.txt   # 含 matplotlib
+pip install matplotlib
 ```
 
 ### 用法
@@ -203,9 +185,9 @@ pip install -r requirements.txt   # 含 matplotlib
 ```bash
 python tools/shared/math_render.py -i draft.md -o draft_with_math.md
 python tools/shared/math_render.py -i draft.md -o out.md --assets-dir math_figures
+python tools/shared/md_to_docx.py -i a.md -o a.docx --math-render
+python tools/shared/mermaid_render.py -i a.md -o a.md --math
 ```
-
-定稿流水线：**``mermaid_render.py`` 默认先跑公式再跑 mermaid**（可用 ``--no-math`` 跳过）。单独转 Word 时 **`md_to_docx.py` 也会自动尝试公式渲染**（``--no-math-render`` 可关闭）。
 
 ---
 
@@ -213,7 +195,7 @@ python tools/shared/math_render.py -i draft.md -o out.md --assets-dir math_figur
 
 将交底书 Markdown 转为 `.docx`，**`#`–`######` 映射为 Word 内置「标题 1」–「标题 9」**，正文为宋体 10.5pt，代码块为 Consolas，便于交给代理人或所内用 Word 修订。
 
-**图示**：定稿应用 **`mermaid_render.py`** 将 mermaid 转为 PNG；若个别块生图失败被降级保留围栏，本脚本会将**仍存在的** `` ```mermaid`` 块按**代码块**写入 Word。本脚本不调用 `mmdc`。
+**图示**：定稿应用 **`mermaid_render.py`** 将 mermaid 转为 PNG；若个别块生图失败被降级保留围栏，本脚本会将**仍存在的** `` ```mermaid`` 块按**代码块**写入 Word。本脚本不启动浏览器。
 
 ### 依赖
 
@@ -221,13 +203,14 @@ python tools/shared/math_render.py -i draft.md -o out.md --assets-dir math_figur
 pip install -r requirements.txt
 ```
 
-依赖为 `python-docx` + 可选 `latex2mathml`（见仓库根目录 `requirements.txt`）。缺 `latex2mathml` 时自动回退 PNG/原文。
+依赖为 `python-docx` + `latex2mathml`（见仓库根目录 `requirements.txt`）。缺 `latex2mathml` 时留原文；公式 PNG 须 ``--math-render`` 且已装 matplotlib。
 
 ### 用法
 
 ```bash
 python tools/shared/md_to_docx.py --input path/to/交底书.md --output path/to/交底书.docx
-python tools/shared/md_to_docx.py -i a.md -o a.docx --no-omml   # 仅 PNG/原文
+python tools/shared/md_to_docx.py -i a.md -o a.docx --no-omml         # 仅 PNG/原文
+python tools/shared/md_to_docx.py -i a.md -o a.docx --math-render    # OMML 失败用 PNG（须 matplotlib）
 ```
 
 图片 `![](相对路径.png)`：默认相对 **Markdown 文件所在目录**；也可指定根目录：
@@ -257,7 +240,7 @@ python tools/shared/md_to_docx.py -i a.md -o a.docx --image-max-width-inches 6 -
 | `> ` | 左缩进引用 |
 | `---` 等 | 浅色分隔线 |
 | `![](path)` | 嵌入图片（路径需存在；默认宽/高上限内等比缩放；公式图与正文混排） |
-| `$` / `\\(...\\)` / `$$` / `\\[...\\]` LaTeX | **优先 OMML（可编辑公式）** → 失败则 **PNG** → 再失败则 **原文**；``--no-omml`` 跳过 OMML |
+| `$` / `\\(...\\)` / `$$` / `\\[...\\]` LaTeX | **优先 OMML（可编辑公式）** → 已有公式 PNG 则嵌图 → 否则 **原文**；``--math-render`` 才预渲染 PNG；``--no-omml`` 跳过 OMML |
 
 **未完整支持**：复杂嵌套列表、HTML 块、**未预渲染的** mermaid 围栏（仍为代码块）、脚注、任务列表等。定稿前请运行 **`mermaid_render.py`**；若仅用外部工具导出 PNG，可直接写 `![](...)`。
 
@@ -372,7 +355,9 @@ pip install -r tools/patent_reader/requirements.txt
 python tools/patent_reader/extract/fetch_patent_pdf.py --pub CN… -o RUN
 
 # 外观设计视图（常无 PDF CDN；需 Playwright，同国知局爬虫依赖）
-pip install -r tools/crawl/requirements-cnipa.txt && python -m playwright install chromium
+pip install -r tools/crawl/requirements-cnipa.txt
+python tools/shared/browser.py --probe
+# 无 Chrome/Edge 时才：python -m playwright install chromium
 python tools/patent_reader/extract/fetch_design_views.py --pub CN…S -o RUN
 ```
 

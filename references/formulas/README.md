@@ -25,7 +25,11 @@ python tools/shared/formula_paradigms.py show weighted_sum
 
 ```bash
 python tools/shared/check_formula_plan.py -i outputs/某案/formula_plan.yaml
+python tools/shared/check_formula_plan.py -i outputs/某案/formula_plan.yaml --eval
 ```
+
+`--eval`：对可解析的简单式（`+ - * / min max`）代入 `numeric_example` 核对 `result`；求和/范数/分位等跳过并警告。  
+`chemistry` 标签或 `\ce{` / 反应箭头：检查简单反应式原子守恒。`physics`/`si`：符号表单位族粗检（警告）。
 
 ## 如何扩展一条范式
 

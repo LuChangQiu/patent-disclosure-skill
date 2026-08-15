@@ -44,9 +44,10 @@ notes_zh: ""                   # 边界、平局、ε 选取等
 
 - `paradigm_ids` / 各 `equations[].paradigm_id` 必须能在合并后的范式库中找到。  
 - 遵守范式库 `rules`：禁 `\tilde`/`\hat`/`\bar` 等；自由符号建议 ≤ `max_free_symbols`。  
-- `numeric_example`：至少给出主打分式的一组输入与结果；Agent 须能手算核对。  
+- `numeric_example`：至少给出主打分式的一组输入与结果。  
+- 写 3.4.1 前执行：`python tools/shared/check_formula_plan.py -i path/to/formula_plan.yaml --eval`（简单式自动代算；复杂式跳过并手算）。  
 - 写 3.4.1 时**只展开本计划**中的式与符号；改公式须先改本文件再联动正文 / 3.5 / 第六章。  
-- 校验：`python tools/shared/check_formula_plan.py -i path/to/formula_plan.yaml`。
+- 化学/反应选用 `stoichiometric_reaction` 等 `chemistry` 标签范式，勿套用 `weighted_sum`。
 
 ## 多轮同步
 

@@ -1,155 +1,147 @@
 #!/usr/bin/env python
 """
-将 Markdown 中的 **mermaid** 围栏与（默认）**LaTeX 公式** 转为 PNG，再写定稿 `.md` 并默认生成 Word。
+将 Markdown 中的 **mermaid** 围栏转为 PNG，再写定稿 `.md` 并默认生成 Word。
 
-**公式**：默认先调用同目录 **`math_render.py`**（``matplotlib``；``--no-math`` 可跳过）。**Mermaid** 围栏块逐块渲染为 PNG，**保留** `` ```mermaid`` … `` ``` `` 源码，并在其后追加 HTML 注释
+**公式**：默认 **不** 调用 ``math_render.py``（避免强制 matplotlib）。Word 公式走 OMML；失败留原文。用户确认后可用 ``--math`` 预渲染公式 PNG。**Mermaid** 围栏块逐块渲染为 PNG，**保留** `` ```mermaid`` … `` ``` `` 源码，并在其后追加 HTML 注释
 ``<!-- ![图示](相对路径) -->``（预览不显示图），便于 ``md_to_docx.py`` 将图嵌入 Word（Word **仅**嵌 PNG，不写 mermaid 代码块）。
 
-**Mermaid 渲染后端（``mmdc``）**检测顺序见 ``_find_mmdc_invocation``：
-1. ``tools/node_modules``（``npm install`` 官方 ``@mermaid-js/mermaid-cli``）；
-2. **PATH 上的 ``mmdc``**（通常为 ``npm install -g @mermaid-js/mermaid-cli``）；
-3. **Node.js + npx** 临时拉取 ``@mermaid-js/mermaid-cli``（无本地安装时）。
+**Mermaid 渲染后端**：Playwright + 仓库内置 ``vendor/mermaid.min.js``。与国知局查新共用
+``browser.py``（系统 Chrome → Edge → 自带 Chromium）。**不**调用 Node / mmdc / ``npx``。
 
 交底书 **3.2 系统框图**与 **3.4 流程图**均使用 fenced mermaid；**不要** ASCII「文字箭头」流程图或框图。
 
-**降级**：某一围栏 ``mmdc`` 生图失败时**不中断**：该处**保留原** `` ```mermaid`` … `` ``` `` 围栏；其余块照常渲染。仍写出 .md 并**照常尝试** ``md_to_docx.py``（Word 中失败块以代码块形式出现）。
+**降级**：某一围栏生图失败时**不中断**：该处**保留原** `` ```mermaid`` … `` ``` `` 围栏；其余块照常渲染。仍写出 .md 并**照常尝试** ``md_to_docx.py``（Word 中失败块以代码块形式出现）。无可用浏览器时同样保留围栏，不阻塞 Markdown 交付。
 
-**清晰度**：默认对 ``mmdc`` 传入较大视口（``-w`` / ``-H``）与 ``-s 2``（Puppeteer 像素密度），PNG 在 Word 中按约 5.5 英寸宽嵌入时更锐利。可用 ``--mmdc-scale 3`` 等进一步提高（文件更大）。
+**清晰度**：默认视口 1400×1050、``device_scale_factor=2``。可用 ``--mmdc-scale`` / ``--mmdc-width`` / ``--mmdc-height``（历史参数名，语义不变）。
 
 用法：
   python tools/shared/mermaid_render.py -i draft.md -o disclosure.md
-  # 默认在同目录生成 disclosure.docx；失败时 stderr 会给出可复制的 md_to_docx 命令
   python tools/shared/mermaid_render.py -i draft.md -o out/disclosure.md --docx out/custom.docx
-  python tools/shared/mermaid_render.py -i draft.md -o disclosure.md --no-docx   # 仅 Markdown
-
-写出 .md 后**默认**调用 ``md_to_docx.py``；Word 失败不导致进程失败（退出码 0），并提示手动转换。
+  python tools/shared/mermaid_render.py -i draft.md -o disclosure.md --no-docx
+  python tools/shared/mermaid_render.py -i draft.md -o disclosure.md --math   # 公式 PNG，须 matplotlib
 """
 from __future__ import annotations
 
 import argparse
 import re
 import shlex
-import shutil
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
+from typing import Callable
+
+_HERE = Path(__file__).resolve().parent
+if str(_HERE) not in sys.path:
+    sys.path.insert(0, str(_HERE))
+
+from browser import install_chromium_hint, install_package_hint, launch_chromium, playwright_installed
+from stdio_utf8 import ensure_utf8_stdio, run as run_utf8
+
+_MERMAID_JS = _HERE / "vendor" / "mermaid.min.js"
+
+_STAGE_HTML = """<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<style>
+html, body { margin: 0; background: #fff; }
+#stage { display: inline-block; padding: 16px; background: #fff; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+</body>
+</html>
+"""
+
+_RENDER_JS = """async ({ src, rid }) => {
+  try {
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: "default",
+      securityLevel: "strict",
+      fontFamily: '"Microsoft YaHei","PingFang SC","Noto Sans CJK SC",Arial,sans-serif',
+      flowchart: { htmlLabels: true, useMaxWidth: false }
+    });
+    const { svg } = await mermaid.render(rid, src);
+    document.getElementById("stage").innerHTML = svg;
+    return null;
+  } catch (e) {
+    return String(e && e.message ? e.message : e);
+  }
+}
+"""
 
 
-def _local_mmdc() -> tuple[list[str], bool] | None:
-    """``tools/npm install`` 或 ``tools/shared`` 下本地 ``mmdc``，避免每次 npx 拉包。"""
-    here = Path(__file__).resolve().parent
-    bin_name = "mmdc.cmd" if sys.platform == "win32" else "mmdc"
-    for root in (here, here.parent):
-        cand = root / "node_modules" / ".bin" / bin_name
-        if cand.is_file():
-            return [str(cand)], False
-    return None
+class _PlaywrightMermaid:
+    """一场定稿共用一个浏览器。"""
 
+    def __init__(self, *, scale: float, width: int, height: int) -> None:
+        self.scale = scale
+        self.width = width
+        self.height = height
+        self._pw = None
+        self._browser = None
+        self._context = None
+        self._page = None
+        self._block_i = 0
 
-def _find_mmdc_invocation() -> tuple[list[str], bool]:
-    """
-    返回 (argv 前缀, use_shell)。
-    优先本地 ``node_modules/.bin/mmdc``；其次 PATH 上的 ``mmdc``；
-    再退回 ``npx -y @mermaid-js/mermaid-cli``（入口即 CLI，勿再追加 argv「mmdc」）。
-    Windows 优先 ``npx.cmd`` + ``shell=False``，避免 ``shlex.quote`` 单引号被 cmd 原样带入路径。
-    """
-    local = _local_mmdc()
-    if local:
-        return local
-    mmdc = shutil.which("mmdc")
-    if mmdc and Path(mmdc).suffix.lower() not in (".ps1",):
-        return [mmdc], False
-    if sys.platform == "win32":
-        npx = shutil.which("npx.cmd") or shutil.which("npx")
-        if npx and Path(npx).suffix.lower() not in (".ps1",):
-            return [npx, "-y", "@mermaid-js/mermaid-cli"], False
-        return ["npx", "-y", "@mermaid-js/mermaid-cli"], True
-    return ["npx", "-y", "@mermaid-js/mermaid-cli"], False
+    def __enter__(self) -> "_PlaywrightMermaid":
+        if not _MERMAID_JS.is_file():
+            raise RuntimeError(f"缺少内置 mermaid：{_MERMAID_JS}")
+        if not playwright_installed():
+            raise RuntimeError("未安装 Playwright。" + install_package_hint())
+        from playwright.sync_api import sync_playwright
 
-
-def _mmdc_extra_args(
-    *,
-    scale: float,
-    width: int,
-    height: int,
-) -> list[str]:
-    """传给 mmdc 的分辨率相关参数（-s 为 Puppeteer deviceScaleFactor，显著影响 PNG 清晰度）。"""
-    return [
-        "-s",
-        str(scale),
-        "-w",
-        str(width),
-        "-H",
-        str(height),
-    ]
-
-
-def _render_one_mermaid(
-    mermaid_source: str,
-    png_path: Path,
-    mmdc_base: list[str],
-    *,
-    use_shell: bool,
-    scale: float,
-    width: int,
-    height: int,
-) -> None:
-    png_path.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile(
-        mode="w",
-        suffix=".mmd",
-        delete=False,
-        encoding="utf-8",
-    ) as tmp:
-        tmp.write(mermaid_source.strip() + "\n")
-        tmp_path = Path(tmp.name)
-    try:
-        extra = _mmdc_extra_args(scale=scale, width=width, height=height)
-        if use_shell:
-            parts = [
-                *mmdc_base,
-                "-i",
-                str(tmp_path),
-                "-o",
-                str(png_path),
-                "-b",
-                "white",
-                *extra,
-            ]
-            cmd = " ".join(shlex.quote(p) for p in parts)
-            r = subprocess.run(
-                cmd,
-                shell=True,
-                capture_output=True,
-                text=True,
-                timeout=180,
-            )
-        else:
-            cmd = [
-                *mmdc_base,
-                "-i",
-                str(tmp_path),
-                "-o",
-                str(png_path),
-                "-b",
-                "white",
-                *extra,
-            ]
-            r = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=180,
-            )
-        if r.returncode != 0:
-            err = (r.stderr or r.stdout or "").strip()
-            raise RuntimeError(f"mmdc 失败 (exit {r.returncode}): {err[:2000]}")
-    finally:
+        self._pw = sync_playwright().start()
         try:
-            tmp_path.unlink(missing_ok=True)
-        except OSError:
-            pass
+            self._browser, _label = launch_chromium(self._pw, headless=True)
+            self._context = self._browser.new_context(
+                viewport={"width": self.width, "height": self.height},
+                device_scale_factor=self.scale,
+            )
+            self._page = self._context.new_page()
+        except Exception:
+            self.close()
+            raise
+        return self
+
+    def close(self) -> None:
+        for closer in (self._context, self._browser):
+            if closer is not None:
+                try:
+                    closer.close()
+                except Exception:
+                    pass
+        self._context = None
+        self._browser = None
+        self._page = None
+        if self._pw is not None:
+            try:
+                self._pw.stop()
+            except Exception:
+                pass
+            self._pw = None
+
+    def __exit__(self, *exc: object) -> None:
+        self.close()
+
+    def render_one(self, mermaid_source: str, png_path: Path) -> None:
+        if self._page is None:
+            raise RuntimeError("浏览器未启动")
+        png_path.parent.mkdir(parents=True, exist_ok=True)
+        self._block_i += 1
+        page = self._page
+        page.set_content(_STAGE_HTML, wait_until="domcontentloaded")
+        page.add_script_tag(path=str(_MERMAID_JS))
+        page.wait_for_function("() => typeof mermaid !== 'undefined'", timeout=30_000)
+        err = page.evaluate(
+            _RENDER_JS,
+            {"src": mermaid_source.strip(), "rid": f"mmd{self._block_i}"},
+        )
+        if err:
+            raise RuntimeError(err)
+        page.locator("#stage").screenshot(path=str(png_path), type="png", timeout=60_000)
 
 
 _MMD_START = re.compile(r"^```mermaid\s*$", re.IGNORECASE)
@@ -175,13 +167,11 @@ def render_markdown_mermaid(
     mmdc_scale: float = 2.0,
     mmdc_width: int = 1400,
     mmdc_height: int = 1050,
+    render_one: Callable[[str, Path], None] | None = None,
 ) -> tuple[str, int, int]:
     """
     返回 (新 markdown 全文, 成功转为 PNG 的块数, 生图失败而保留围栏的块数)。
-    资源目录为 out_md_path.parent / assets_rel。
-    失败的块原样写回 `` ```mermaid`` … `` ``` ``，不抛错。
-    成功的块写回围栏源码 + 紧随其后的 ``<!-- ![图示](…) -->``（与 ``math_render`` 保留 LaTeX 原文同理）。
-    若围栏后已有 mermaid 图示注释，则视为已处理，原样跳过（可重复跑脚本）。
+    ``render_one`` 仅供测试注入；默认 Playwright + 内置 mermaid.js。
     """
     lines = md_text.splitlines(keepends=True)
     out: list[str] = []
@@ -190,77 +180,88 @@ def render_markdown_mermaid(
     failed = 0
     block_idx = 0
     assets_dir = out_md_path.parent / assets_rel
-    mmdc_base, use_shell = _find_mmdc_invocation()
 
-    while i < len(lines):
-        line = lines[i]
-        if _MMD_START.match(line):
-            fence_open = line
-            i += 1
-            body: list[str] = []
-            while i < len(lines) and not _MMD_END.match(lines[i]):
-                body.append(lines[i])
-                i += 1
-            closing = lines[i] if i < len(lines) else "```\n"
-            if i < len(lines):
-                i += 1
+    own_renderer: _PlaywrightMermaid | None = None
+    renderer_error: str | None = None
+    if render_one is None:
+        try:
+            own_renderer = _PlaywrightMermaid(
+                scale=mmdc_scale, width=mmdc_width, height=mmdc_height
+            )
+            own_renderer.__enter__()
+            render_one = own_renderer.render_one
+        except Exception as e:
+            renderer_error = str(e)
+            if "无法启动浏览器" in renderer_error or "Executable" in renderer_error:
+                renderer_error = f"{renderer_error} {install_chromium_hint()}"
+            print(f"[mermaid_render] 无法启动出图（将保留 mermaid 源码）：{renderer_error}", file=sys.stderr)
 
-            # 已定稿：围栏 + 图示注释，不重复渲染
-            j = i
-            while j < len(lines) and lines[j].strip() == "":
-                j += 1
-            if j < len(lines):
-                cm = _MERMAID_HIDDEN_COMMENT_RE.match(lines[j].strip())
-                if cm and _is_mermaid_figure_comment(cm.group(1), cm.group(2)):
+    try:
+        while i < len(lines):
+            line = lines[i]
+            if _MMD_START.match(line):
+                fence_open = line
+                i += 1
+                body: list[str] = []
+                while i < len(lines) and not _MMD_END.match(lines[i]):
+                    body.append(lines[i])
+                    i += 1
+                closing = lines[i] if i < len(lines) else "```\n"
+                if i < len(lines):
+                    i += 1
+
+                j = i
+                while j < len(lines) and lines[j].strip() == "":
+                    j += 1
+                if j < len(lines):
+                    cm = _MERMAID_HIDDEN_COMMENT_RE.match(lines[j].strip())
+                    if cm and _is_mermaid_figure_comment(cm.group(1), cm.group(2)):
+                        out.append(fence_open)
+                        out.extend(body)
+                        if not closing.endswith("\n"):
+                            closing = closing + "\n"
+                        out.append(closing)
+                        while i < j:
+                            out.append(lines[i])
+                            i += 1
+                        out.append(lines[i])
+                        i += 1
+                        ok += 1
+                        continue
+
+                block_idx += 1
+                fname = f"fig_{ok + 1:03d}.png"
+                png_path = assets_dir / fname
+                try:
+                    if render_one is None:
+                        raise RuntimeError(renderer_error or "无可用 mermaid 渲染器")
+                    render_one("".join(body), png_path)
+                except Exception as e:
+                    failed += 1
+                    print(
+                        f"[mermaid_render] 第 {block_idx} 个 mermaid 围栏生图失败（已保留源码）：{e}",
+                        file=sys.stderr,
+                    )
                     out.append(fence_open)
                     out.extend(body)
                     if not closing.endswith("\n"):
                         closing = closing + "\n"
                     out.append(closing)
-                    while i < j:
-                        out.append(lines[i])
-                        i += 1
-                    out.append(lines[i])
-                    i += 1
-                    ok += 1
                     continue
-
-            block_idx += 1
-            fname = f"fig_{ok + 1:03d}.png"
-            png_path = assets_dir / fname
-            try:
-                _render_one_mermaid(
-                    "".join(body),
-                    png_path,
-                    mmdc_base,
-                    use_shell=use_shell,
-                    scale=mmdc_scale,
-                    width=mmdc_width,
-                    height=mmdc_height,
-                )
-            except Exception as e:
-                failed += 1
-                print(
-                    f"[mermaid_render] 第 {block_idx} 个 mermaid 围栏生图失败（已保留源码）：{e}",
-                    file=sys.stderr,
-                )
+                ok += 1
+                rel = f"{assets_rel.strip('/')}/{fname}".replace("\\", "/")
                 out.append(fence_open)
                 out.extend(body)
                 if not closing.endswith("\n"):
                     closing = closing + "\n"
                 out.append(closing)
+                out.append(f"<!-- ![图示 {ok}]({rel}) -->\n")
                 continue
-            ok += 1
-            rel = f"{assets_rel.strip('/')}/{fname}".replace("\\", "/")
-            out.append(fence_open)
-            out.extend(body)
-            if not closing.endswith("\n"):
-                closing = closing + "\n"
-            out.append(closing)
-            out.append(f"<!-- ![图示 {ok}]({rel}) -->\n")
-            continue
-        out.append(line)
-        i += 1
+            out.append(line)
+            i += 1
+    finally:
+        if own_renderer is not None:
+            own_renderer.close()
 
     return "".join(out), ok, failed
 
@@ -289,7 +290,7 @@ def _print_manual_docx_hint(out_md: Path, docx_out: Path, base_dir: Path, md_scr
         )
 
 
-def try_write_docx(out_md: Path, docx_out: Path) -> bool:
+def try_write_docx(out_md: Path, docx_out: Path, *, math_render: bool = False) -> bool:
     """
     调用同目录下的 md_to_docx.py。成功返回 True；失败打印警告与手动命令，返回 False。
     """
@@ -299,6 +300,7 @@ def try_write_docx(out_md: Path, docx_out: Path) -> bool:
     docx_out.parent.mkdir(parents=True, exist_ok=True)
 
     if not md_script.is_file():
+        print("DOCX: ok=0 error=missing_script", file=sys.stderr)
         print("警告：未找到 md_to_docx.py，跳过 Word。", file=sys.stderr)
         _print_manual_docx_hint(out_md, docx_out, base_dir, md_script)
         return False
@@ -313,37 +315,47 @@ def try_write_docx(out_md: Path, docx_out: Path) -> bool:
         "--base-dir",
         str(base_dir),
     ]
+    if math_render:
+        cmd.append("--math-render")
     try:
-        r = subprocess.run(
+        r = run_utf8(
             cmd,
             capture_output=True,
-            text=True,
             timeout=300,
         )
     except subprocess.TimeoutExpired:
+        print("DOCX: ok=0 error=timeout", file=sys.stderr)
         print("警告：生成 Word 超时（300s）。", file=sys.stderr)
         _print_manual_docx_hint(out_md, docx_out, base_dir, md_script)
         return False
     except OSError as e:
+        print("DOCX: ok=0 error=spawn", file=sys.stderr)
         print(f"警告：无法启动 md_to_docx：{e}", file=sys.stderr)
         _print_manual_docx_hint(out_md, docx_out, base_dir, md_script)
         return False
 
+    out = (r.stdout or "").strip()
+    err = (r.stderr or "").strip()
+    if out:
+        print(out, file=sys.stderr)
+    if err:
+        print(err, file=sys.stderr)
+
     if r.returncode != 0:
+        print(f"DOCX: ok=0 exit={r.returncode}", file=sys.stderr)
         print(f"警告：md_to_docx 失败（退出码 {r.returncode}）。", file=sys.stderr)
-        err = (r.stderr or r.stdout or "").strip()
-        if err:
-            print(err[:2000], file=sys.stderr)
         _print_manual_docx_hint(out_md, docx_out, base_dir, md_script)
         return False
 
+    print("DOCX: ok=1", file=sys.stderr)
     print(f"已写入 Word: {docx_out}", file=sys.stderr)
     return True
 
 
 def main(argv: list[str] | None = None) -> int:
+    ensure_utf8_stdio()
     p = argparse.ArgumentParser(
-        description="Markdown 内 mermaid 围栏 → PNG，默认再生成同名 Word"
+        description="Markdown 内 mermaid 围栏 → PNG（Playwright），默认再生成同名 Word"
     )
     p.add_argument("-i", "--input", required=True, type=Path, help="含 mermaid 围栏的 .md")
     p.add_argument("-o", "--output", required=True, type=Path, help="输出 .md（图片引用）")
@@ -365,9 +377,14 @@ def main(argv: list[str] | None = None) -> int:
         help="不生成 Word，仅输出替换图片后的 Markdown",
     )
     p.add_argument(
+        "--math",
+        action="store_true",
+        help="用 matplotlib 预渲染 LaTeX 公式 PNG（默认跳过；须另装 matplotlib）",
+    )
+    p.add_argument(
         "--no-math",
         action="store_true",
-        help="不渲染 LaTeX 公式（默认先 math_render 再 mermaid）",
+        help=argparse.SUPPRESS,  # 旧开关；现默认已跳过公式 PNG
     )
     p.add_argument(
         "--math-assets-dir",
@@ -379,21 +396,21 @@ def main(argv: list[str] | None = None) -> int:
         type=float,
         default=2.0,
         metavar="N",
-        help="mmdc -s：Puppeteer 缩放（默认 2，约 2 倍像素密度；越大越清晰但文件更大）",
+        help="device_scale_factor（默认 2；越大越清晰但文件更大）",
     )
     p.add_argument(
         "--mmdc-width",
         type=int,
         default=1400,
         metavar="PX",
-        help="mmdc -w：渲染视口宽度像素（默认 1400，复杂 flowchart 不易裁切）",
+        help="渲染视口宽度像素（默认 1400）",
     )
     p.add_argument(
         "--mmdc-height",
         type=int,
         default=1050,
         metavar="PX",
-        help="mmdc -H：渲染视口高度像素（默认 1050）",
+        help="渲染视口高度像素（默认 1050）",
     )
     args = p.parse_args(argv)
     if args.mmdc_scale <= 0:
@@ -417,7 +434,8 @@ def main(argv: list[str] | None = None) -> int:
         md = in_path.read_text(encoding="utf-8", errors="replace")
 
     math_ok = math_fail = 0
-    if not getattr(args, "no_math", False):
+    want_math = bool(getattr(args, "math", False))
+    if want_math:
         try:
             from math_render import render_markdown_math
 
@@ -433,7 +451,8 @@ def main(argv: list[str] | None = None) -> int:
                 print("[mermaid_render] " + "".join(parts_m), file=sys.stderr)
         except ImportError:
             print(
-                "[mermaid_render] 未安装 matplotlib，跳过公式渲染（pip install matplotlib）",
+                "[mermaid_render] 未安装 matplotlib，跳过公式 PNG"
+                "（用户确认后：pip install matplotlib）",
                 file=sys.stderr,
             )
 
@@ -447,6 +466,7 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     out_path.write_text(new_md, encoding="utf-8")
+    print(f"MERMAID: ok={n_ok} fail={n_fail}", file=sys.stderr)
     parts = [f"已写入 {out_path}（mermaid：{n_ok} 处已转为 PNG"]
     if n_fail:
         parts.append(f"，{n_fail} 处生图失败已保留 fenced 源码")
@@ -456,11 +476,12 @@ def main(argv: list[str] | None = None) -> int:
         print(
             "[mermaid_render] 已继续生成 Markdown"
             + (" 并将尝试 Word" if not args.no_docx else "")
-            + "；请检查 Node/mmdc 或修正语法后重跑本脚本。",
+            + "；框图 PNG 可在浏览器可用后重跑本脚本。禁止为出图执行 npm/npx。",
             file=sys.stderr,
         )
 
     if args.no_docx:
+        print("DOCX: skip=1", file=sys.stderr)
         return 0
 
     docx_path = (
@@ -468,7 +489,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.docx is not None
         else out_path.with_suffix(".docx")
     )
-    try_write_docx(out_path, docx_path)
+    try_write_docx(out_path, docx_path, math_render=want_math)
 
     return 0
 

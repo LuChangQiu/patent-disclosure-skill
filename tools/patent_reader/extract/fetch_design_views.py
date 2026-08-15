@@ -57,8 +57,9 @@ try:
 except ImportError as e:  # pragma: no cover
     raise SystemExit(
         "需要 tools/crawl 与 Playwright。请先：\n"
-        "  pip install -r tools/crawl/requirements-cnipa.txt\n"
-        "  python -m playwright install chromium\n"
+        "  pip install playwright\n"
+        "  python tools/shared/browser.py --probe\n"
+        "  （无 Chrome/Edge 时才：python -m playwright install chromium）\n"
         f"导入错误: {e}"
     ) from e
 

@@ -1,7 +1,7 @@
 ---
 name: patent-disclosure-skill
 description: "中国专利技能：专利点挖掘与交底书（发明/实用/外观）编写，通俗解读专利，嗅探政策动向，辅助审查答复。| China patents skill: mine patent points and draft disclosures (invention / utility model / design), plain-language reading, policy sniffing, assisted office-action response."
-version: "3.4.1"
+version: "3.5.0"
 user-invocable: true
 argument-hint: "[可选：项目路径 / 专利号或 PDF / 政策动向嗅探或技能进化 / 审查答复或案例入库]"
 allowed-tools: Read, Write, Edit, Grep, Glob, WebSearch, Bash
@@ -15,8 +15,8 @@ allowed-tools: Read, Write, Edit, Grep, Glob, WebSearch, Bash
 |------|--------|--------|
 | **A · 交底书编写** | 挖专利点 → 查新 → 成稿 → 迭代 | `prompts/disclosure/`（类型子目录见下） |
 | **B · 专利通俗解读** | 公开号 / PDF / 全文 → 通俗笔记 + 图谱 | `prompts/reader/patent_plain_reader.md` |
-| **C · 技能进化旁路** | 政策/审查动向嗅探 → 带时间戳清单 → **人审后**才改技能 | `prompts/evolution/`（**默认关**，须显式触发） |
-| **D · 审查答复辅助** | 案例脱敏入库；通知书 → 标签+向量检索 → 答复草稿 | `prompts/oa/`（**默认关**；须人审） |
+| **C · 技能进化旁路** | 政策/审查动向嗅探 → 带时间戳清单 → **人审后**才改技能 | `prompts/evolution/`（须显式触发） |
+| **D · 审查答复辅助** | 案例脱敏入库；通知书 → 标签+向量检索 → 答复草稿 | `prompts/oa/`（须显式触发；须人审） |
 
 提供**专利号或专利全文/PDF**且意图为「读懂」时 → **优先模式 B**，**不**默认跑交底书 Step 1–8。  
 **禁止**因写交底/读专利自动进入模式 C/D。
@@ -30,12 +30,12 @@ prompts/disclosure/          # 交底公共流程
   design/                    # 外观设计：挖点 / builder / template（单独 md）
 prompts/reader/              # 通俗解读 + type_hooks
 prompts/shared/              # 写读共用：Structure / Appearance 填表 + figure_plan + 外观/实用辅助线稿
-prompts/evolution/           # 模式 C：政策/审查动向嗅探 · 进化清单（旁路，默认关）
-prompts/oa/                  # 模式 D：审查答复 / 案例入库（旁路，默认关）
+prompts/evolution/           # 模式 C：政策/审查动向嗅探 · 进化清单（旁路，须显式触发）
+prompts/oa/                  # 模式 D：审查答复 / 案例入库（旁路，须显式触发）
 references/schemas/          # structure / appearance / figure_plan / formula_plan / lineart / evolution / oa_case
 references/formulas/         # 发明公式推荐范式（paradigms.yaml，可外挂扩展）
 tools/crawl/                 # 国知局等爬取
-tools/shared/                # docx/mermaid/专利类型/可选 STEP / 可选辅助线稿门禁
+tools/shared/                # docx/mermaid/专利类型/可选 STEP / 可选辅助线稿门禁；browser.py + vendor/mermaid.min.js
 tools/patent_reader/         # 解读工具：shared/ | extract/ | analyze/ | vault/
 tools/oa/                    # 模式 D：config / embed / sqlite-vec / ingest / search
 outputs/evolution/           # 模式 C 清单默认落盘（gitignore）
@@ -45,18 +45,18 @@ docs/oa/                     # 模式 D：embedding 配置模板种子（运行�
 
 ## 环境与约定
 
-- **语言**：默认与用户语种一致；专利与法律术语用行业常用表述。
+- **脚本判读（尤其 Windows）**：stderr 有字 **不等于** 失败。以 **退出码 0** 和机读前缀为准：`EPUB_HITS_JSON:` / `EPUB_MERGE:`、`PROBE:` / `BROWSER:`、`MERMAID:` / `DOCX:` / `MATH:` / `omml_text_fallback=`。PowerShell 可能把 stderr 标成 `NativeCommandError` 或乱码；**禁止**因此重跑安装、或把查新降级 WebSearch。勿用 `2>&1` 把 JSON 混进错误流。
 - **专利类型**：未显式指定时交底**默认发明**；材料更偏实用/外观时在汇总或预览阶段**反问**（见 `disclosure/intake.md`）。
 - **交底书图示**：
-  - **发明**：3.2 / 3.4 用 fenced **mermaid** → `tools/shared/mermaid_render.py`；见 `tools/README.md`。
+  - **发明**：3.2 / 3.4 用 fenced **mermaid** → `tools/shared/mermaid_render.py`（Playwright + 内置 mermaid.js，见 `tools/shared/browser.py`）。
   - **实用新型**：先 `figure_plan.yaml` 排序入文图（优先线稿/CAD；总装+局部写 `relates_to`）+ 部件/关系表（见 `utility_model/disclosure_builder.md`）。
   - **外观**：先 `figure_plan.yaml` 选视图（实拍/线稿均可；多视写 `relates_to`；场景图默认低优先）（见 `design/disclosure_builder.md`）。
 - **STEP / CAD（可选，默认关）**：Step 2 用 `cad_scan.py` 分类；遇 `.step`/`.stp` **先反问**再装 `requirements-step.txt` 并 `step_to_views.py --enable-step-parse`；仅有原生 CAD 则回复末尾提示导出 STEP。见 `project_scan.md`「CAD / STEP」。
 - **外观辅助线稿（可选，默认关）**：有产品图时可反问；用户 **是** 后按 `shared/design_lineart_assist.md`（先 YAML 描述 + 多视联读，再**参考图**出线稿）；无图禁止；非申报终稿；**不**画部件序号。
 - **实用结构辅助线稿（可选，默认关）**：有结构图且缺干净线稿时可反问；用户 **是** 后按 `shared/structure_lineart_assist.md`（对齐 `structure_schema.parts`；轮廓与序号分层，推荐 overlay；禁止自创件号）；无图禁止；非申报终稿。**勿**与外观 `design_lineart_*` 混用。
 - **解读 + Obsidian**：强烈推荐配置库；见 **`docs/obsidian-setup-guide.md`**。
-- **技能进化 / 动向嗅探（可选，默认关）**：显式触发后走模式 C（政策/审查动向嗅探 → 清单）；清单含 **观点↔信源 URL 表**；未人审确认前**不**改技能正文。
-- **审查答复（可选，默认关）**：显式触发后走模式 D；向量模型**可选**（可 `skip-vector`，中途再 enable + 重建）；推荐智谱 `embedding-3`；标签检索始终可用，向量超时则回退。
+- **技能进化 / 动向嗅探（须显式触发）**：用户点名后走模式 C（政策/审查动向嗅探 → 清单）；清单含 **观点↔信源 URL 表**；未人审确认前**不**改技能正文。
+- **审查答复（须显式触发）**：用户点名后走模式 D；向量模型**可选**（可 `skip-vector`，中途再 enable + 重建）；推荐智谱 `embedding-3`；标签检索始终可用，向量超时则回退。
 
 ---
 
@@ -168,7 +168,7 @@ docs/oa/                     # 模式 D：embedding 配置模板种子（运行�
 
 ---
 
-## 模式 C · 技能进化旁路 · 政策/审查动向嗅探（默认关）
+## 模式 C · 技能进化旁路 · 政策/审查动向嗅探
 
 1. **`Read`** `evolution/guardrails.md` → `intake.md`  
 2. **`Read`** `evolution/research.md`：WebSearch + 打开国知局等官网正文；默认近 12 个月  
@@ -184,7 +184,7 @@ docs/oa/                     # 模式 D：embedding 配置模板种子（运行�
 
 ---
 
-## 模式 D · 审查答复辅助（默认关）
+## 模式 D · 审查答复辅助
 
 1. **`Read`** `oa/guardrails.md` → `intake.md`  
 2. **首次 / 改向量**：`Read` `oa/configure_embedding.md` → 对话问清（可跳过 / 预设 / 自定义 URL+模型+Key）→ `config.py set … --api-key …`（默认 **selftest**）→ 需重建则人确认后 `rebuild_vectors.py --confirm`  

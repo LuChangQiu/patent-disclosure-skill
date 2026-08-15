@@ -32,6 +32,8 @@ def normalize_latex_for_omml(latex: str) -> str:
     # 常见简写
     body = body.replace(r"\le", r"\leq").replace(r"\ge", r"\geq")
     body = body.replace(r"\land", r"\wedge").replace(r"\lor", r"\vee")
+    # latex2mathml 对 \left/\right/\big 套 \min/\max 易失败；去掉尺寸命令，保留括号
+    body = re.sub(r"\\(big+|Big+|left|right|bigl|bigr|Bigl|Bigr)\b", "", body)
     return body
 
 

@@ -19,7 +19,7 @@
   python tools/crawl/cnipa_epub_search.py --type utility_model 卡扣
   python tools/crawl/cnipa_epub_search.py --type design 外壳造型
 
-需已安装：pip install -r tools/crawl/requirements-cnipa.txt && python -m playwright install chromium
+需已安装：``pip install playwright``（或根目录 ``requirements.txt``）。有系统 Chrome / Edge 时不必 ``playwright install chromium``。探测：``python tools/shared/browser.py --probe``。
 """
 from __future__ import annotations
 
@@ -36,17 +36,9 @@ for p in (_CRAWL, _SHARED):
         sys.path.insert(0, s)
 
 from patent_type import TYPE_ALL, normalize_patent_type  # noqa: E402
+from stdio_utf8 import ensure_utf8_stdio  # noqa: E402
 
 _MAX_TERMS = 8
-
-
-def _ensure_utf8_stdio() -> None:
-    for stream in (sys.stdout, sys.stderr):
-        try:
-            if hasattr(stream, "reconfigure"):
-                stream.reconfigure(encoding="utf-8", errors="replace")
-        except (OSError, ValueError, TypeError):
-            pass
 
 
 def _parse_argv(argv: list[str]) -> tuple[str, list[str]]:
@@ -99,7 +91,7 @@ def _usage() -> None:
         file=sys.stderr,
     )
     print(
-        "whitespace splits to multiple terms; one Playwright run per term; merge by pub_number.",
+        "whitespace splits to multiple terms; one browser for all terms; merge by pub_number.",
         file=sys.stderr,
     )
     print(
@@ -109,7 +101,7 @@ def _usage() -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    _ensure_utf8_stdio()
+    ensure_utf8_stdio()
     argv = argv if argv is not None else sys.argv[1:]
     patent_type, rest = _parse_argv(argv)
     terms = _terms_from_argv(rest)
@@ -130,26 +122,28 @@ def main(argv: list[str] | None = None) -> int:
         import playwright  # noqa: F401
     except ImportError:
         print(
-            "ERROR: pip install -r tools/crawl/requirements-cnipa.txt && python -m playwright install chromium",
+            "ERROR: pip install playwright  (or: pip install -r requirements.txt)",
+            file=sys.stderr,
+        )
+        print(
+            "HINT: python tools/shared/browser.py --probe",
             file=sys.stderr,
         )
         return 1
 
-    from cnipa_epub_crawler import search_epub_keyword
+    from cnipa_epub_crawler import search_epub_keywords
     from cnipa_epub_parse import hits_to_jsonable
 
     multi = len(terms) > 1
-    last_html = ""
-    all_batches: list = []
 
     try:
-        for kw in terms:
-            html, hits = search_epub_keyword(kw, patent_type=patent_type)
-            last_html = html
-            all_batches.append(hits)
+        rows = search_epub_keywords(terms, patent_type=patent_type)
     except Exception as e:
         print("CNIPA_EPUB_ERROR:", e, file=sys.stderr)
         return 1
+
+    last_html = rows[-1][0] if rows else ""
+    all_batches = [hits for _html, hits in rows]
 
     if multi:
         hits = _dedupe_hits(all_batches)

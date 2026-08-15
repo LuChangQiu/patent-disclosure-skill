@@ -3,6 +3,7 @@
 
 用法：
   python tools/shared/check_formula_plan.py -i outputs/某案/formula_plan.yaml
+  python tools/shared/check_formula_plan.py -i plan.yaml --eval
   python tools/shared/check_formula_plan.py -i plan.yaml --case-dir outputs/某案
 """
 from __future__ import annotations
@@ -18,11 +19,15 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from tools.shared.formula_chem import check_chemistry, latex_looks_chemical  # noqa: E402
+from tools.shared.formula_eval import eval_equation  # noqa: E402
 from tools.shared.formula_paradigms import (  # noqa: E402
     combo_by_id,
     load_paradigms,
     paradigm_by_id,
 )
+from tools.shared.formula_units import check_additive_units, check_score_weights  # noqa: E402
+from tools.shared.stdio_utf8 import ensure_utf8_stdio  # noqa: E402
 
 
 def _load(path: Path) -> dict[str, Any]:
@@ -40,7 +45,23 @@ def _load(path: Path) -> dict[str, Any]:
     return data
 
 
-def check_plan(plan: dict[str, Any], case_dir: str | Path | None = None) -> dict[str, Any]:
+def _selected_tags(cfg: dict[str, Any], pids: list[str]) -> set[str]:
+    tags: set[str] = set()
+    for pid in pids:
+        p = paradigm_by_id(cfg, pid)
+        if not p:
+            continue
+        for t in p.get("tags") or []:
+            tags.add(str(t).strip().lower())
+    return tags
+
+
+def check_plan(
+    plan: dict[str, Any],
+    case_dir: str | Path | None = None,
+    *,
+    eval_numeric: bool = False,
+) -> dict[str, Any]:
     cfg = load_paradigms(case_dir)
     rules = cfg.get("rules") or {}
     errors: list[str] = []
@@ -110,22 +131,87 @@ def check_plan(plan: dict[str, Any], case_dir: str | Path | None = None) -> dict
     if re.search(r"max\s*\(\s*1\s*,", blob, re.I):
         warnings.append("检测到 max(1, …)：请确认 1 与分母同量纲，否则改用 ε")
 
-    return {
+    tags = _selected_tags(cfg, pids)
+    ne = plan.get("numeric_example") or {}
+    given = ne.get("given") if isinstance(ne, dict) else None
+    result = ne.get("result") if isinstance(ne, dict) else None
+
+    eval_details: list[dict[str, Any]] = []
+    if eval_numeric and eqs:
+        any_ok = False
+        for i, eq in enumerate(eqs):
+            if not isinstance(eq, dict):
+                continue
+            lx = str(eq.get("latex") or "")
+            if not lx.strip():
+                continue
+            detail = eval_equation(lx, given, result)
+            detail["index"] = i
+            eval_details.append(detail)
+            st = detail.get("status")
+            if st == "ok":
+                any_ok = True
+            elif st == "mismatch":
+                errors.append(
+                    f"equations[{i}] 数值例代算失败：{detail.get('reason')}"
+                )
+            else:
+                warnings.append(
+                    f"equations[{i}] 未自动代算：{detail.get('reason')}（请手算）"
+                )
+        if eval_details and not any_ok and not any(
+            d.get("status") == "mismatch" for d in eval_details
+        ):
+            warnings.append(
+                "所有公式均未能自动代算（求和/范数/分位等复杂式属预期）；请按 §8.2 手算 numeric_example"
+            )
+
+    chem_force = "chemistry" in tags or "stoich" in tags
+    chem_latex = any(
+        isinstance(eq, dict) and latex_looks_chemical(str(eq.get("latex") or ""))
+        for eq in eqs
+    )
+    chem_details: dict[str, Any] | None = None
+    if chem_force or chem_latex:
+        chem_details = check_chemistry(eqs, given=given, force=chem_force)
+        errors.extend(chem_details.get("errors") or [])
+        warnings.extend(chem_details.get("warnings") or [])
+
+    if "score" in tags or "normalize" in tags:
+        warnings.extend(check_score_weights(pids, given))
+
+    if "physics" in tags or "si" in tags or isinstance(syms, list):
+        warnings.extend(check_additive_units(eqs, syms if isinstance(syms, list) else None))
+
+    out: dict[str, Any] = {
         "ok": not errors,
         "errors": errors,
         "warnings": warnings,
         "paradigm_count": len(cfg.get("paradigms") or []),
         "sources": cfg.get("_sources"),
+        "tags": sorted(tags),
     }
+    if eval_numeric:
+        out["eval"] = eval_details
+    if chem_details is not None:
+        out["chemistry"] = {
+            "checked_reactions": chem_details.get("checked_reactions"),
+        }
+    return out
 
 
 def main(argv: list[str] | None = None) -> int:
-    if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    ensure_utf8_stdio()
 
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("-i", "--input", required=True, help="formula_plan.yaml|json")
     ap.add_argument("--case-dir", default="", help="案件目录（加载覆盖范式）")
+    ap.add_argument(
+        "--eval",
+        dest="eval_numeric",
+        action="store_true",
+        help="对可解析的简单式代入 numeric_example 核对 result（复杂式跳过并警告）",
+    )
     args = ap.parse_args(argv)
 
     path = Path(args.input)
@@ -133,7 +219,7 @@ def main(argv: list[str] | None = None) -> int:
         raise SystemExit(f"找不到: {path}")
     case = args.case_dir.strip() or str(path.parent)
     plan = _load(path)
-    result = check_plan(plan, case_dir=case)
+    result = check_plan(plan, case_dir=case, eval_numeric=args.eval_numeric)
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0 if result.get("ok") else 1
 

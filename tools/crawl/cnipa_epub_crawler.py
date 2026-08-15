@@ -2,13 +2,13 @@
 """
 中国专利公布公告网站点：http://epub.cnipa.gov.cn/ —— **首页「公布公告查询」** 检索（#indexForm / #searchStr）。
 
-须安装 **Playwright + Chromium**。若只需内存中解析、不落盘 HTML，优先用同目录 **`cnipa_epub_search.py`**；
+须安装 **Playwright**。浏览器启动见 ``tools/shared/browser.py``（系统 Chrome → Edge → 自带 Chromium；有系统浏览器时不必 ``playwright install chromium``）。若只需内存中解析、不落盘 HTML，优先用同目录 **`cnipa_epub_search.py`**；
 本文件侧重 **写出结果页 HTML** 与可插拔的 ``fetch_epub_result_html`` API。
 
 -------------------------------------------------------------------------------
 一、整体流程（单次检索）
 -------------------------------------------------------------------------------
-1. 启动 Chromium（默认无头；可用环境变量改为有界面）。
+1. 启动浏览器（默认无头；系统 Chrome → Edge → 自带 Chromium；可用环境变量改为有界面）。
 2. 新建浏览器上下文：设定 **桌面 Chrome UA**、**zh-CN**、固定 **视口**（见 ``_new_context``），使请求形态接近普通用户浏览器。
 3. ``page.goto`` 站点首页，**wait_until="load"**。
 4. **等待首页可检索**：首页在访客到达后会先经 **前端脚本/WAF 一类逻辑**，未通过前 **不会出现** 检索输入框 ``#searchStr``。本实现通过 **周期性轮询 DOM**（每 3 秒一次，总时长见 ``EPUB_WAF_MAX_WAIT_SEC``，默认 180s）直到 ``#searchStr`` 出现；**不是**用 requests 直接 POST 能等价替代的步骤。
@@ -57,21 +57,13 @@ if str(Path(__file__).resolve().parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from cnipa_epub_parse import EpubSearchHit, hits_to_jsonable, parse_search_result_html
+from browser import launch_chromium  # noqa: E402
+from stdio_utf8 import ensure_utf8_stdio  # noqa: E402
 from patent_type import (  # noqa: E402
     TYPE_ALL,
     epub_checkbox_states,
     normalize_patent_type,
 )
-
-
-def _ensure_utf8_stdio() -> None:
-    """减轻 Windows 终端下 JSON 中文乱码（与 cnipa_epub_search.py 一致）。"""
-    for stream in (sys.stdout, sys.stderr):
-        try:
-            if hasattr(stream, "reconfigure"):
-                stream.reconfigure(encoding="utf-8", errors="replace")
-        except (OSError, ValueError, TypeError):
-            pass
 
 
 EPUB_BASE = "http://epub.cnipa.gov.cn/"
@@ -217,15 +209,34 @@ def fetch_epub_result_html(
     只拉取检索结果页 HTML，不在此函数内做正文解析。
     解析请使用 ``cnipa_epub_parse.parse_search_result_html(html)``。
     """
+    rows = search_epub_keywords(
+        [keyword], patent_type=patent_type, playwright_factory=playwright_factory
+    )
+    return rows[0][0]
+
+
+def search_epub_keywords(
+    terms: list[str],
+    *,
+    patent_type: str = TYPE_ALL,
+    playwright_factory: Callable[[], Playwright] | None = None,
+) -> list[tuple[str, list[EpubSearchHit]]]:
+    """一场检索共用一个浏览器；一词一页，返回与 ``terms`` 等长的 ``(html, hits)`` 列表。"""
+    if not terms:
+        return []
     pw_gen = playwright_factory or sync_playwright
     with pw_gen() as p:
         browser = _launch_browser(p)
         context = _new_context(browser)
         try:
             page = context.new_page()
-            wait_for_epub_home_ready(page)
-            submit_index_search(page, keyword, patent_type=patent_type)
-            return _safe_page_content(page)
+            out: list[tuple[str, list[EpubSearchHit]]] = []
+            for keyword in terms:
+                wait_for_epub_home_ready(page)
+                submit_index_search(page, keyword, patent_type=patent_type)
+                html = _safe_page_content(page)
+                out.append((html, parse_search_result_html(html)))
+            return out
         finally:
             context.close()
             browser.close()
@@ -237,10 +248,10 @@ def search_epub_keyword(
     patent_type: str = TYPE_ALL,
     playwright_factory: Callable[[], Playwright] | None = None,
 ) -> tuple[str, list[EpubSearchHit]]:
-    html = fetch_epub_result_html(
-        keyword, patent_type=patent_type, playwright_factory=playwright_factory
+    rows = search_epub_keywords(
+        [keyword], patent_type=patent_type, playwright_factory=playwright_factory
     )
-    return html, parse_search_result_html(html)
+    return rows[0]
 
 
 def search_epub_keyword_with_page(
@@ -256,13 +267,8 @@ def search_epub_keyword_with_page(
 
 
 def _launch_browser(p: Playwright) -> Browser:
-    return p.chromium.launch(
-        headless=not _headed(),
-        args=[
-            "--disable-blink-features=AutomationControlled",
-            "--no-sandbox",
-        ],
-    )
+    browser, _label = launch_chromium(p, headless=not _headed())
+    return browser
 
 
 def _new_context(browser: Browser) -> BrowserContext:
@@ -290,7 +296,7 @@ def _dump_home_debug() -> None:
 
 
 if __name__ == "__main__":
-    _ensure_utf8_stdio()
+    ensure_utf8_stdio()
     argv = [a for a in sys.argv[1:] if a.strip()]
     if argv and argv[0] in ("--dump-home", "-d"):
         _dump_home_debug()

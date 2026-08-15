@@ -19,6 +19,11 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_PATH = ROOT / "references" / "formulas" / "paradigms.yaml"
 
+try:
+    from stdio_utf8 import ensure_utf8_stdio
+except ImportError:
+    from tools.shared.stdio_utf8 import ensure_utf8_stdio
+
 
 def _load_yaml(path: Path) -> dict[str, Any]:
     if not path.is_file():
@@ -120,8 +125,7 @@ def latex_for(p: dict[str, Any]) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
-    if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    ensure_utf8_stdio()
 
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("cmd", choices=["list", "show", "combos", "paths"])

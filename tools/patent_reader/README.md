@@ -61,7 +61,8 @@ python tools/patent_reader/extract/extract_patent_text.py \
 
 # 外观设计（CN…S）：常无 PDF CDN → 用国知局视图取证
 pip install -r tools/crawl/requirements-cnipa.txt
-python -m playwright install chromium
+python tools/shared/browser.py --probe
+# 无 Chrome/Edge 时才：python -m playwright install chromium
 python tools/patent_reader/extract/fetch_design_views.py \
   --pub CN309939145S -o tmp/patent_reader/demo_design
 # → figures/images/view_001.jpg … + figures/manifest.json + source/*_design_brief.json

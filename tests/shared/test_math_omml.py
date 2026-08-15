@@ -35,6 +35,26 @@ class MathToOmmlTests(unittest.TestCase):
         # 极怪输入仍应返回 None 而非抛错
         self.assertIsNone(try_latex_to_omml(r"\unknownmacro{???{{{"))
 
+    def test_left_right_min_converts(self):
+        from lxml import etree
+        from math_to_omml import latex_to_omml
+
+        el = latex_to_omml(
+            r"\min\left(1,\frac{p_{mem}}{\max(1,d_{mem})}\right)",
+            display=True,
+        )
+        self.assertIn("oMath", etree.tostring(el, encoding="unicode"))
+
+    def test_score_with_left_right_converts(self):
+        from math_to_omml import try_latex_to_omml
+
+        latex = (
+            r"Score(\mathbf{d},\mathbf{p}) = w_{cpu}\cdot d_{cpu}\cdot p_{cpu} + "
+            r"w_{mem}\cdot \min\left(1,\frac{p_{mem}}{\max(1,d_{mem})}\right) + "
+            r"w_{io}\cdot(1-p_{io\_busy})\cdot d_{io} - \lambda\cdot n_{inflight}"
+        )
+        self.assertIsNotNone(try_latex_to_omml(latex, display=True))
+
 
 class MdToDocxOmmlTests(unittest.TestCase):
     @classmethod
@@ -57,6 +77,23 @@ class MdToDocxOmmlTests(unittest.TestCase):
                 xml = zf.read("word/document.xml").decode("utf-8")
         self.assertIn("oMath", xml)
         self.assertIn("oMathPara", xml)
+        from md_to_docx import get_math_stats
+
+        st = get_math_stats()
+        self.assertGreaterEqual(st.omml, 1)
+        self.assertEqual(st.text, 0)
+
+    def test_omml_fail_records_text_fallback(self):
+        from md_to_docx import convert_md_to_docx, get_math_stats
+
+        convert_md_to_docx(
+            "$$\n\\unknownmacro{???{{{\n$$\n",
+            base_dir=None,
+            prefer_omml=True,
+        )
+        st = get_math_stats()
+        self.assertGreaterEqual(st.text, 1)
+        self.assertTrue(any("unknownmacro" in x for x in st.text_latex))
 
     def test_no_omml_falls_back_without_crash(self):
         from md_to_docx import convert_md_to_docx
