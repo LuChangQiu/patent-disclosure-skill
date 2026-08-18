@@ -13,6 +13,15 @@ from shared.common import ROOT, runtime_config, slugify_pub, slugify_term
 ASSETS_OBSIDIAN = ROOT / "assets" / "obsidian"
 
 
+def repo_obsidian_base_src(stem: str) -> Path | None:
+    """技能市场上架禁止提交 *.base；仓库源稿为 *.base.yaml，拷库时再写成 .base。"""
+    for name in (f"{stem}.base.yaml", f"{stem}.base"):
+        path = ASSETS_OBSIDIAN / name
+        if path.is_file():
+            return path
+    return None
+
+
 def evidence_scope_label(scope: str) -> str:
     """标签用短英文（patent/evidence/full）。"""
     return {
@@ -2085,9 +2094,9 @@ def bootstrap_vault(vault: Path, papers_dir: str = "Research/Patents") -> list[s
         shutil.copy2(css_src, css_dst)
         actions.append(f"snippet:{css_dst}")
 
-    base_src = ASSETS_OBSIDIAN / "patents.base"
+    base_src = repo_obsidian_base_src("patents")
     base_dst = papers / "patents.base"
-    if base_src.is_file():
+    if base_src is not None:
         need_copy = not base_dst.is_file() or base_src.stat().st_mtime > base_dst.stat().st_mtime
         if need_copy:
             body = base_src.read_text(encoding="utf-8")
@@ -2096,10 +2105,10 @@ def bootstrap_vault(vault: Path, papers_dir: str = "Research/Patents") -> list[s
             base_dst.write_text(body, encoding="utf-8")
             actions.append(f"base:{base_dst}")
 
-    gloss_base_src = ASSETS_OBSIDIAN / "glossary.base"
+    gloss_base_src = repo_obsidian_base_src("glossary")
     cfg = runtime_config()
     glossary_rel = cfg.get("glossary_dir") or "Research/术语"
-    if gloss_base_src.is_file():
+    if gloss_base_src is not None:
         gloss_root = vault / glossary_rel
         gloss_root.mkdir(parents=True, exist_ok=True)
         gloss_base_dst = gloss_root / "glossary.base"

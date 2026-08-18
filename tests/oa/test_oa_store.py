@@ -13,11 +13,11 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from tools.oa.case_md import chunk_case, dump_case_markdown, parse_case_markdown  # noqa: E402
-from tools.oa.config import apply_preset, recommend_payload, write_config, load_config, PRESETS  # noqa: E402
-from tools.oa.redact import redact_text  # noqa: E402
-from tools.oa.store import init_db, search, search_by_tags, upsert_case, upsert_case_meta, _connect  # noqa: E402
-from tools.oa.embed import Embedder, EmbedError  # noqa: E402
+from tools.oa.case_md import chunk_case, dump_case_markdown, parse_case_markdown
+from tools.oa.config import apply_preset, recommend_payload, write_config, load_config, PRESETS
+from tools.oa.redact import redact_text
+from tools.oa.store import init_db, search, search_by_tags, upsert_case, upsert_case_meta, _connect
+from tools.oa.embed import Embedder, EmbedError
 
 
 class RedactTests(unittest.TestCase):
@@ -50,7 +50,7 @@ class CaseMdTests(unittest.TestCase):
 class StoreVecTests(unittest.TestCase):
     def test_upsert_and_search(self):
         try:
-            import sqlite_vec  # noqa: F401
+            import sqlite_vec
         except ImportError:
             self.skipTest("sqlite-vec not installed")
 
@@ -212,7 +212,7 @@ class EmbedderVendorTests(unittest.TestCase):
     def test_openai_compatible_sends_dimensions(self):
         captured: dict = {}
 
-        def fake_urlopen(req, timeout=120):  # noqa: ARG001
+        def fake_urlopen(req, timeout=120):
             captured["url"] = req.full_url
             captured["body"] = json.loads(req.data.decode("utf-8"))
 
@@ -268,7 +268,7 @@ class EmbedderVendorTests(unittest.TestCase):
     def test_minimax_body_shape(self):
         captured: dict = {}
 
-        def fake_urlopen(req, timeout=120):  # noqa: ARG001
+        def fake_urlopen(req, timeout=120):
             captured["url"] = req.full_url
             captured["body"] = json.loads(req.data.decode("utf-8"))
             n = len(captured["body"].get("texts") or [])
@@ -329,7 +329,7 @@ class EmbedderVendorTests(unittest.TestCase):
 class PdfExtractTests(unittest.TestCase):
     def test_extract_simple_pdf(self):
         try:
-            import fitz  # noqa: F401
+            import fitz
         except ImportError:
             self.skipTest("pymupdf not installed")
         from tools.oa.pdf_text import extract_pdf_text, read_document
@@ -414,6 +414,7 @@ class VaultLayoutTests(unittest.TestCase):
             self.assertTrue(Path(result["index"]).is_file())
             self.assertTrue(Path(result["canvas"]).is_file())
             self.assertTrue(Path(result["base"]).is_file())
+            self.assertEqual(Path(result["base"]).name, "_OA看板.base")
             self.assertEqual(len(list_history_case_paths(oa)), 1)
 
 

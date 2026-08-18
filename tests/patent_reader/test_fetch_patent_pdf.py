@@ -9,7 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools" / "patent_reader"))
 
-from extract.fetch_patent_pdf import (  # noqa: E402
+from extract.fetch_patent_pdf import (
     extract_pdf_urls_from_html,
     load_known_cdn_examples,
     normalize_pub,

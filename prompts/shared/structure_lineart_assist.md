@@ -1,92 +1,114 @@
-# 实用新型结构辅助线稿（可选，默认关闭）
+# 实用新型结构线稿（成文前必做）
 
-**合同**：`references/schemas/structure_lineart_brief.schema.yaml`  
+**公共合同先读**：`prompts/shared/image_gen.md`（线稿只有两条路；CAD 不得当线稿、不得入文）  
+**本文件合同**：`references/schemas/structure_lineart_brief.schema.yaml`  
 **前置**：已有或本轮将写出的 `structure_schema.yaml` + `figure_plan.yaml`（见 `fill_structure_schema.md`）  
-**性质**：交底**辅助**插图；**非**申报终稿；**禁止**无参考图纯文生图。  
-**与外观分流**：外观用 `design_lineart_assist.md`；**禁止**用本流程处理外观，也禁止用外观流程给实用新型乱加「美感线稿无件号」当结构图。
+**与外观分流**：外观用 `design_lineart_assist.md`；禁止混用。
 
 ## 开关
 
-- **默认关闭**。未询问或用户未答 **是** 前：不得写 `structure_lineart_brief.yaml`，不得调用出图工具生成结构线稿。  
-- 实用新型案件在填表/成文前，若已有结构相关图且缺干净线稿/CAD，可**一句反问**：是否开启实用新型结构辅助线稿？（请回 **是** / **否**）  
-- 用户回 **否** 或跳过：仅用已有线稿/CAD/实拍走 Structure + figure_plan。  
-- 用户回 **是**：再执行下文；可用环境变量 `PATENT_SKILL_STRUCTURE_LINEART=1` 或 `--enable-structure-lineart` 标记本轮已授权。
+- **默认开启**。不问用户。仅当用户**已经明确说不要线稿**，或 `PATENT_SKILL_SKIP_LINEART=1`，才整段跳过。  
+- **禁止**把 CAD / STEP 投影、实拍当成线稿入文。CAD 只当普通材料打分，分数够才可能作图生图参考。
 
-## 何时触发反问
+## 步骤
 
-- 专利类型 = **实用新型**，且材料中已有至少一张结构相关图（`figure_plan` 候选或 assets 实拍/结构图）。  
-- **无任何图片**：不要反问「开启线稿」来绕过缺图；应要求补图或开启 STEP（若有）。无图则**禁止**本辅助流程。  
-- 若已有清晰 `kind: lineart`/`cad` 入文图：可不反问；用户主动要求时再开。
+### 0. 规划途经
 
-## 确认「是」后的步骤
+```bash
+python ${CLAUDE_SKILL_DIR}/tools/shared/image_gen.py --case-dir "outputs/{案件标识}"
+```
+
+| mode | 做什么 |
+|------|--------|
+| `existing_lineart` | 材料已有合格 `kind: lineart`：入文这些 path；仍须按 `parts` overlay 件号（若原图无号） |
+| `img2img` | 有合格参考图（含高分 CAD/实拍）→ 写 brief → 门禁 → 图生图轮廓；失败则先描述再文生图 |
+| `txt2img` | 无过线参考图 → 写 brief（`source_paths` 可空）→ 按 StructureSchema 文生图 |
 
 ### 1. 读 YAML，联读多视 + 统一件号
 
 1. **`Read`** `structure_schema.yaml`（或 json）与 `figure_plan.yaml`。  
 2. 按 `figure_plan.relates_to` 联读总装/局部；**跨图同一 `parts.id`**。  
 3. **`Write`** `structure_lineart_brief.yaml`：  
+   - `enabled: true`  
    - `structure_summary` / `parts_legend` 对齐 StructureSchema（`id`+`name` 不得改号）  
-   - `callout_mode` 默认 **`overlay`**（轮廓与序号分层）  
-   - 每个 `views[]`：至少填一个存在的 `source_paths`；`visible_part_ids` 为本视可见件  
-   - `gen_prompt`：黑白结构线稿、无彩色无棚拍阴影、不发明未见结构；**默认不要**在提示里让模型自由编造序号（留给 overlay）  
+   - `callout_mode` 默认 **`overlay`**  
+   - 有参考图则填存在的 `source_paths`；无参考图可空。`visible_part_ids` 为本视可见件  
+   - `gen_prompt`：黑白结构线稿、不发明未见结构；默认不要让模型自由编造序号（留给 overlay）  
    - `uncertain` 中的件不得列入本视必标序号
 
-### 2. 门禁校验（推荐）
+### 2. 门禁
 
 ```bash
-python ${CLAUDE_SKILL_DIR}/tools/shared/structure_lineart_gate.py --enable-structure-lineart \
+python ${CLAUDE_SKILL_DIR}/tools/shared/structure_lineart_gate.py \
   --case-dir "outputs/{案件标识}" --prepare-jobs
 ```
 
-- 无授权旗标 → 拒绝。  
-- 缺少 Structure / 无有效源图 / `visible_part_ids` 不在 `parts` → 拒绝。  
-- 成功则写出 `lineart_assist/structure_lineart_jobs.json`。
+缺少 Structure / `visible_part_ids` 不在 `parts` → 拒绝。  
+成功则写出 `lineart_assist/structure_lineart_jobs.json`。
 
-### 3. 基于参考图出线稿（两层）
+### 3. 出图（轮廓 → 锚点 → 叠标 → 语义自查）
 
-对 jobs 中每一 job：
+对每一 job：
 
-1. **轮廓层**：以 `source_paths` / `reference_images` 为视觉参考生成线稿，写入 `output_path`。**禁止**纯文生图。  
-2. **序号层**（`callout_mode: overlay`，推荐）：  
-   - 使用 job 内 `callouts`（`id`+`name`）在轮廓图上叠加引出线与件号；  
-   - 优先宿主标注 / 图层 / SVG / 人工核对，**不要**依赖模型一次性「猜位置猜编号」；  
-   - 叠号结果写入 `callout_output_path`（若无则 `{stem}_callouts.png`）。  
-3. **`in_prompt` 降级**：仅当无法叠图时，才在带参考图的条件下把「可见件号列表」写入提示；生成后必须对照 `parts_legend` 人工/自检，错号则重做或改 overlay。  
-4. **`contour_only`**：只出无号轮廓；正文用部件表说明。
+1. **轮廓层**（`mode` 不是 `existing_lineart` 时）：按 `image_gen.md` 图生图或「先描述再文生图」或文生图，写入 `output_path`。  
+2. **锚点定位**（`callout_mode: overlay`）：大模型读取已经生成的**无号轮廓图**，逐个定位 job `callouts` 对应部件；把归一化 `anchor`、附近留白区 `label`、`confidence` 持久化到案件目录 `structure_callout_anchors.yaml`。合同见 `references/schemas/structure_callout_anchors.schema.yaml`。锚点须落在对应部件轮廓上或紧邻轮廓，序号应围绕结构就近分散，禁止全部排到画布边缘。
+3. **精确叠标**：运行：
+
+```bash
+python ${CLAUDE_SKILL_DIR}/tools/shared/structure_callout_overlay.py \
+  --case-dir "outputs/{案件标识}" \
+  --anchors "outputs/{案件标识}/structure_callout_anchors.yaml"
+```
+
+Python 只校验件号合法、坐标 0..1、置信度与 label 间距；**不判断标没标对部件**。结果写入 `output_svg_path`。需要 PNG 时再用 `svg_screenshot.py --svg … --png …`。
+
+4. **叠标后语义自查（必做，最多 2 轮校正）**：Python 通过 ≠ 图面对。须 **`Read` 叠标后的 PNG/SVG**（不要只看无号轮廓），对照本视 `visible_part_ids` + `structure_schema.parts` 的 **id+名称**：
+
+   | 查什么 | 不合格则 |
+   |--------|----------|
+   | 每个必标件号是否都在图上 | 补锚点后重叠标 |
+   | 引出线末端是否落在**该名称对应的构造**上（不是邻件） | 改 `anchor`/`label`，禁止改件号 |
+   | 相邻易混件是否对调（腔体↔腔内件、轴↔转子、接头↔法兰、剖切符号↔零件） | 按名称把锚点挪到正确轮廓 |
+   | 图上有号但 `visible_part_ids` 没有的 | 删该 callout，禁止自创件号 |
+   | 序号全贴画布边缘、引出线全竖直/全水平 | 把 label 就近散开，改 `route` |
+
+   校正只改 `structure_callout_anchors.yaml` 再跑 `structure_callout_overlay.py`（及必要时 `svg_screenshot.py`）。**禁止**为纠件号而二次文生图/图生图改轮廓。两轮后仍对不上的件写入 `uncertain` 或从本视 `visible_part_ids` 拿掉，不得硬标。
+
+5. **`in_prompt` 降级**：仅当无法叠图时，把可见件号列表写入提示；生成后对照 `parts_legend`，错号则重做或改 overlay。
+6. **`contour_only`**：只出无号轮廓；正文用部件表说明。
 
 ### 4. 回写 figure_plan
 
-每张辅助线稿追加一条（**默认不入正文**）：
+**生成（或合格已有）线稿默认入文**。CAD / 实拍条 `use_in_disclosure: false`。
 
 ```yaml
-- fig: null
-  role: assembly          # 或 detail
-  path: lineart_assist/….png   # 优先带 callouts 的路径（若已叠号）
+- fig: 1
+  role: assembly
+  path: lineart_assist/….png   # 优先带 callouts 的路径
   covers: ["1", "2", "总装"]
   kind: lineart
-  score: 55
-  use_in_disclosure: false
-  reason: AI 辅助结构线稿（非申报终稿；件号对齐 StructureSchema）
-  relates_to:
-    - fig: 1
-      relation: same_state
-      note: 由图1辅助生成的结构线稿草稿
+  relevance: 80
+  quality: 80
+  score: 80
+  use_in_disclosure: true
+  reason: 大模型生成的结构线稿（件号对齐 StructureSchema）
+  relates_to: []
 ```
 
-仅当用户明确要求「辅助线稿也写入交底」时，才 `use_in_disclosure: true` 并分配连续 `fig`。  
-有总装+局部辅助对时，补写 `relates_to: detail_of`。
+有总装+局部对时，补写 `relates_to: detail_of`。CAD 条不得改成入文。
 
 ### 5. 成文纪律
 
-- 正文附图说明以**原始结构图/CAD/已有线稿**为主；辅助线稿可一句「另附 AI 结构线稿草稿（件号对齐部件表）」。  
+- 正文「如图 N」只引用合格线稿。  
+- **禁止**把 CAD 投影写成线稿或入文。  
 - **禁止**写成「已按国知局规范绘制的正式附图」。  
 - 第三章部件表件号须与图上序号、`structure_schema.parts` 一致。
 
 ## 自检（内部）
 
-- [ ] 本轮确有用户 **是**（或等价授权）  
-- [ ] brief 每视均有真实 `source_paths`；未纯文生图  
+- [ ] 已跑 `image_gen.py`；CAD 未当合格线稿、未入文  
 - [ ] `parts_legend` / 图上件号与 StructureSchema 一致；跨图未改号  
+- [ ] `structure_callout_anchors.yaml` 已落盘；已 Read 叠标后的图；件号与部件名称一一对应（非仅坐标合法）；label 就近分散，引出方向不单一；校正只改 YAML 重叠标
 - [ ] `uncertain` 件未画死序号  
-- [ ] 优先 overlay；figure_plan 辅助条默认 `use_in_disclosure: false`  
+- [ ] 优先 overlay；未自创件号  
 - [ ] 未误用 `design_lineart_*`  

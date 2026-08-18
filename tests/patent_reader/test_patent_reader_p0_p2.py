@@ -10,8 +10,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools" / "patent_reader"))
 
-from extract.figure_extract import CAPTION_RE, _classify_visual_quality, extract_patent_pdf_figures  # noqa: E402
-from vault.obsidian import build_canvas, resolve_glossary_nodes, scan_glossary_index  # noqa: E402
+from extract.figure_extract import CAPTION_RE, _classify_visual_quality, extract_patent_pdf_figures
+from vault.obsidian import build_canvas, resolve_glossary_nodes, scan_glossary_index
 
 
 def test_caption_re() -> None:

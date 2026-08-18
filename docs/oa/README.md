@@ -23,4 +23,5 @@
 
 刷新：`python tools/oa/refresh_vault.py`  
 查看实际路径：`python tools/oa/config.py recommend`。  
+仓库源稿是 `assets/obsidian/oa.base.yaml`（部分技能市场不允许提交 `.base`）；写入库时仍为 `_OA看板.base`。  
 流程见 `prompts/oa/` 与 [SKILL.md](../../SKILL.md) 模式 D。

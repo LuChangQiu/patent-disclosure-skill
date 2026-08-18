@@ -1,23 +1,25 @@
-# 使用 tools/shared/md_to_docx.py、docx_to_md.py、pptx_to_md.py、mermaid_render.py、formula_plan 时安装
+# Used by tools/shared/md_to_docx.py, docx_to_md.py, pptx_to_md.py,
+# mermaid_render.py, formula_plan.
 python-docx>=1.1.0
-# Word 可编辑公式（LaTeX → MathML → OMML）；失败默认留原文
+# Word editable math (LaTeX -> MathML -> OMML); keep source text on failure
 latex2mathml>=3.77.0
 # formula_plan / paradigms.yaml
 PyYAML>=6.0
-# 定稿图示（mermaid → PNG）须 Playwright，与查新共用浏览器；见 tools/shared/browser.py
+# mermaid -> PNG via Playwright; shares browser with CNIPA crawl
+# (tools/shared/browser.py)
 playwright>=1.40.0
 mammoth>=1.6.0
 python-pptx>=0.6.21
 
-# 可选：公式 PNG（OMML 失败且用户确认后才装；约 100MB，含 numpy 等）
+# Optional: formula PNG (OMML fail AND user says yes; ~100MB incl numpy)
 #   pip install matplotlib
 #   python tools/shared/md_to_docx.py -i a.md -o a.docx --math-render
 
-# 可选：Step 5 国知局 epub.cnipa.gov.cn 抓取（Playwright；有系统 Chrome/Edge 时不必再装 Chromium）
+# Optional: CNIPA epub.cnipa.gov.cn (Playwright; system Chrome/Edge)
 #   pip install playwright
 #   python tools/shared/browser.py --probe
-#   无系统浏览器时才：python -m playwright install chromium
+#   only if no system browser: python -m playwright install chromium
 
-# 可选：STEP（.step/.stp）多视角解析（CadQuery，默认关闭；须用户确认后安装）
-#   pip install -r tools/shared/requirements-step.txt
-#   python tools/shared/step_to_views.py --enable-step-parse -i model.step -o outputs/case/cad_views
+# Optional: STEP views (CadQuery inside tools/shared/cad-env; Python 3.10-3.12)
+#   python tools/shared/cad_venv.py
+#   python tools/shared/run_step_to_views.py --enable-step-parse -i model.step -o outputs/case/cad_views

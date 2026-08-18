@@ -9,10 +9,10 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from tools.shared.check_formula_plan import check_plan  # noqa: E402
-from tools.shared.formula_chem import check_chemistry, parse_formula_atoms, parse_reaction  # noqa: E402
-from tools.shared.formula_eval import eval_equation  # noqa: E402
-from tools.shared.formula_units import check_additive_units, check_score_weights  # noqa: E402
+from tools.shared.check_formula_plan import check_plan
+from tools.shared.formula_chem import check_chemistry, parse_formula_atoms, parse_reaction
+from tools.shared.formula_eval import eval_equation
+from tools.shared.formula_units import check_additive_units, check_score_weights
 
 
 class FormulaEvalTests(unittest.TestCase):

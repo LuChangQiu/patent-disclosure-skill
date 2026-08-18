@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """扫描目录中的 STEP / 原生 CAD（无 CadQuery 依赖）。
 
-供 Step 2 / 迭代补材料时快速分类，决定「反问开启」或「结束前提示导出」。
+供 Step 2 / 迭代补材料时快速分类，记下「交底落盘后是否反问开启」或「交付前提示导出」。
 
 示例：
   python tools/shared/cad_scan.py -r knowledge -r outputs/case
@@ -18,7 +18,7 @@ _SHARED = Path(__file__).resolve().parent
 if str(_SHARED) not in sys.path:
     sys.path.insert(0, str(_SHARED))
 
-from cad_formats import (  # noqa: E402
+from cad_formats import (
     EXPORT_HINT_ZH,
     STEP_CONFIRM_ZH,
     iter_classified,
@@ -46,8 +46,8 @@ def build_report(roots: list[str], *, recursive: bool = True) -> dict:
             "hint_export_step": EXPORT_HINT_ZH if action == "hint_export_step" else "",
         },
         "next_if_enabled": [
-            "pip install -r tools/shared/requirements-step.txt",
-            "python tools/shared/step_to_views.py --enable-step-parse -i <file.step> -o <outdir>",
+            "python tools/shared/cad_venv.py",
+            "python tools/shared/run_step_to_views.py --enable-step-parse -i <file.step> -o <outdir>",
         ],
     }
 

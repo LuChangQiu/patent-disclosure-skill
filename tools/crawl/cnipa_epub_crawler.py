@@ -57,9 +57,9 @@ if str(Path(__file__).resolve().parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from cnipa_epub_parse import EpubSearchHit, hits_to_jsonable, parse_search_result_html
-from browser import launch_chromium  # noqa: E402
-from stdio_utf8 import ensure_utf8_stdio  # noqa: E402
-from patent_type import (  # noqa: E402
+from browser import launch_chromium
+from stdio_utf8 import ensure_utf8_stdio
+from patent_type import (
     TYPE_ALL,
     epub_checkbox_states,
     normalize_patent_type,

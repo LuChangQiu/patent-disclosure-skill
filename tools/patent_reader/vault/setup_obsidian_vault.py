@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-一次性初始化 Obsidian 库：CSS 片段、patents.base、索引页。
+一次性初始化 Obsidian 库：CSS 片段、patents.base（源稿 patents.base.yaml）、索引页。
 
 用法：
   python tools/patent_reader/vault/setup_obsidian_vault.py

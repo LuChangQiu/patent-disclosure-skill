@@ -23,19 +23,19 @@
 ## 流程
 
 1. 收集结构图（照片、CAD 截图、爆炸图、专利附图）  
-   - 若存在 **`.step`/`.stp`** 且用户已确认开启解析：先按 `project_scan.md`「CAD / STEP」运行 **`step_to_views.py --enable-step-parse`**，以产出的 `views/*.png` + `*.seed.yaml` 为材料起点（**默认不开启、不装依赖**）。  
-   - 仅有原生 CAD、无 STEP：勿假装已解析；提示用户导出 STEP（见 `cad_scan.py`）。  
+   - 成文前即使有 **`.step`/`.stp`** 也不投影、不装依赖；用已有图片/文档填表。仅当用户已在**交底落盘后**确认开启（或成文前主动要求）：按 `project_scan.md`「CAD / STEP」运行 **`run_step_to_views.py --enable-step-parse`**，以产出的 `views/*` + `*.seed.yaml` 为材料起点。  
+   - 仅有原生 CAD、无 STEP：勿假装已解析；交付回复末尾提示导出 STEP（见 `cad_scan.py`）。  
 2. **跨图联读**：总装 / 爆炸 / 局部须对照同一套件号；先建立「图角色」再填 parts（禁止每张图各起一套命名）  
 3. 先填 StructureSchema，再写交底/笔记；禁止看图直接长文  
 4. **交底模式**：在上表目录 **`Write`** `structure_schema.yaml`（或 json）**与** `figure_plan.yaml`  
-   - 若有 `figure_plan.seed.yaml` / `structure_schema.seed.yaml`：可复制审改为定稿，**须**人工核对件名、`covers`、主题；自动 `relates_to`（`alternate_view`）可保留。  
-   - 对每张候选图判定 `role` / `kind` / `covers`（对齐 `parts.id`）/ `score`  
+   - 若有 `figure_plan.seed.yaml` / `structure_schema.seed.yaml`：可复制审改为定稿；**CAD 种子条保持 `kind: cad`、不入文**，须识图重评 `relevance` / `quality`。  
+   - 对每张候选图判定 `role` / `kind` / `covers`（对齐 `parts.id`）/ `relevance` / `quality` / `score`  
    - **图际关联**：局部/剖视/爆炸图填写 `relates_to`（如 `detail_of` → 总装 `fig`）；有 assembly+detail 入文对时**不得**漏写  
    - 可选：关键 `relations[].seen_in` 列出能看见该连接的 `fig` 号  
-   - **优先** `lineart`、`cad`；场景杂图默认不入文  
+   - **入文只选合格 `lineart`**；`cad` / 实拍只打分，禁止当线稿入文  
    - 仅 `use_in_disclosure: true` 分配连续 `fig`（1…N）  
    - `theme_summary` 写当前结构主题；`patent_type: utility_model`  
-5. **辅助线稿（可选，默认关）**：材料中**已有结构相关图**且缺干净线稿/CAD 时，可反问是否开启（**是** / **否**）。用户回 **是** 后 **`Read`** `prompts/shared/structure_lineart_assist.md`：先写 `structure_lineart_brief.yaml`（读 Structure + figure_plan，件号对齐 `parts`），再 `structure_lineart_gate.py --enable-structure-lineart --prepare-jobs`，**仅**带参考图出轮廓；序号层推荐 `callout_mode: overlay`（按 `parts` 叠引出线，禁止模型自创件号）。无图禁止。辅助线稿默认 `use_in_disclosure: false`。勿与外观 `design_lineart_*` 混用。  
+5. **结构线稿（必做）**：**`Read`** `prompts/shared/image_gen.md`，再 **`Read`** `prompts/shared/structure_lineart_assist.md`。不问用户。先 `image_gen.py` 看 `mode`：已有合格线稿则入文、不再生成；否则图生图（CAD/实拍可作参考）或文生图。件号 overlay 对齐 `parts`；叠标后须读图按名称核对引出线（改锚点 YAML 重叠标，最多 2 轮）。禁止自创件号。勿与外观 `design_lineart_*` 混用。仅 `PATENT_SKILL_SKIP_LINEART=1` 或用户明确不要线稿才跳过。  
 6. **解读模式**：工作目录 **`structure_schema.json`**（入库脚本约定名）；`figure_plan` **可选**，不强制；若写 figure_plan 仍建议补 `relates_to`  
 7. `uncertain` 不得写成确定保护点；跨图对不上的写入 `uncertain`  
 8. `mode`：`disclosure` | `reader`

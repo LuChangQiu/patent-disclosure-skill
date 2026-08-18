@@ -17,7 +17,7 @@ class MathToOmmlTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         try:
-            import latex2mathml  # noqa: F401
+            import latex2mathml
         except ImportError:
             raise unittest.SkipTest("latex2mathml not installed")
 
@@ -60,8 +60,8 @@ class MdToDocxOmmlTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         try:
-            import latex2mathml  # noqa: F401
-            from docx import Document  # noqa: F401
+            import latex2mathml
+            from docx import Document
         except ImportError:
             raise unittest.SkipTest("latex2mathml/python-docx missing")
 

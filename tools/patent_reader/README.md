@@ -39,7 +39,7 @@ tools/patent_reader/
 | | `setup_obsidian_vault.py` | 库初始化（开发/排障） |
 | 根 | `requirements.txt` | 可选依赖（`pymupdf`） |
 
-库内模板：`assets/obsidian/`（CSS、Bases、索引页）。
+库内模板：`assets/obsidian/`（CSS、`*.base.yaml` 源稿、索引页；拷库时写成 `.base`）。
 
 流程见 **`prompts/reader/patent_plain_reader.md`**。
 

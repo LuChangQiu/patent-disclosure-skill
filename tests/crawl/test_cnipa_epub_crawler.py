@@ -10,14 +10,14 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools" / "crawl"))
 sys.path.insert(0, str(ROOT / "tools" / "shared"))
 
-from cnipa_epub_crawler import (  # noqa: E402
+from cnipa_epub_crawler import (
     EPUB_TITLE_NO_HIT,
     EPUB_TITLE_RESULT,
     _RESULT_PAGE_READY_JS,
     apply_epub_type_filter,
     submit_index_search,
 )
-from patent_type import (  # noqa: E402
+from patent_type import (
     epub_checkbox_states,
     google_patents_websearch_query,
     infer_patent_type_from_pub,

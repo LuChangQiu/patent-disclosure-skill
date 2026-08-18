@@ -10,7 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools" / "patent_reader"))
 
-from vault.schema_vault import (  # noqa: E402
+from vault.schema_vault import (
     appearance_canvas_cards,
     load_structure_schema,
     render_structure_section_md,

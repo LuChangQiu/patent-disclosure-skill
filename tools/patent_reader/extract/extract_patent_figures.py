@@ -54,7 +54,7 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
 
     try:
-        import fitz  # noqa: F401
+        import fitz
     except ImportError:
         print("需安装 pymupdf：pip install pymupdf", file=sys.stderr)
         return 1

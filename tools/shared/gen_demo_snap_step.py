@@ -125,9 +125,8 @@ def main(argv: list[str] | None = None) -> int:
     root = Path(__file__).resolve().parents[2]
     default_out = (
         root
-        / "examples"
-        / "example_utility_model_snap_heatsink"
-        / "knowledge"
+        / "tests"
+        / "fixtures"
         / "cad"
         / "demo_snap_plate.step"
     )

@@ -11,7 +11,7 @@ from unittest.mock import MagicMock
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools" / "shared"))
 
-import browser as browser_mod  # noqa: E402
+import browser as browser_mod
 
 
 class LaunchChromiumTests(unittest.TestCase):

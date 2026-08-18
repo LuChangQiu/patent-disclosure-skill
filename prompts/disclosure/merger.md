@@ -16,8 +16,8 @@
 
 1. **识别增量**：新内容主要影响哪些章节：背景、1.1 现有技术、3.4 流程、实施例等；实用/外观还须判断是否影响**附图主题或材料集**。
 2. **非破坏性合并**：以**追加或局部重写**为主，不推翻未涉及且用户未要求修改的章节。
-3. **figure_plan 同步（实用新型 / 外观，强制）**：本轮若新增/替换/删除附图，或主题/保护侧重点/部件与设计要点变化——案件目录**无** `figure_plan.yaml` 则按 `fill_*_schema.md` **创建**；**有**则重评 `score`、`use_in_disclosure`、`fig`、`covers`、`relates_to`、`theme_summary`。**先**更新清单，**再**改正文插图与「如图/见图 N」。合同：`references/schemas/figure_plan.schema.yaml`。  
-   - 本轮若补充了 CAD/STEP 文件：按 `project_scan.md` 跑 **`cad_scan.py`**；STEP 须用户确认后再 `step_to_views`；仅原生 CAD 在合并摘要回复末尾提示导出。
+3. **figure_plan 同步（实用新型 / 外观，强制）**：本轮若新增/替换/删除附图，或主题/保护侧重点/部件与设计要点变化——案件目录**无** `figure_plan.yaml` 则按 `fill_*_schema.md` **创建**；**有**则重评 `relevance` / `quality` / `score`、`use_in_disclosure`、`fig`、`covers`、`relates_to`、`theme_summary`。**先**更新清单，**再**改正文插图与「如图/见图 N」。合同：`references/schemas/figure_plan.schema.yaml`。CAD 条不得改为入文。清单更新后按 `image_gen.md` 重跑线稿规划（有合格线稿才跳过生成）。  
+   - 本轮若补充了 CAD/STEP 文件：按 `project_scan.md` 跑 **`cad_scan.py`**；成文不中断。STEP 在**本轮交付后**再反问，确认后才 `step_to_views`；仅原生 CAD 在合并摘要回复末尾提示导出。
 4. **查新联动**：若增量改变了技术实质，判断是否需要**补充检索**并更新 1.1 / 区别论述。
 5. **一致性**：合并后执行 `disclosure_self_check.md` 中的 **8.2、8.3**（实用/外观含 **8.4/8.5** 与 figure_plan 项）快速检查；若涉及 **3.4.1 公式/3.5 参数**，须同步核对 **`formula_plan.yaml`** 与 **`disclosure_builder.md` §7.7**（范式库、符号表、维度下标、3.5 符号列同形）。
 6. **落盘**：将合并后的全文写入 **`{案件名}_{YYYYMMDDHHmmss}.md`**，再经 `mermaid_render.py` 生成同名 `.docx`（§7.3 第 5 点）。

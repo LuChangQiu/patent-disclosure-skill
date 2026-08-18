@@ -32,18 +32,22 @@
 |------|------|
 | **`shared/cad_scan.py`** | 扫描 `.step`/`.stp` 与原生 CAD 后缀；输出 JSON（`ask_enable_step_parse` / `hint_export_step`）。**无重依赖**。 |
 | **`shared/cad_formats.py`** | 后缀表与提示文案。 |
-| **`shared/step_to_views.py`** | STEP → 多视角 PNG + `assembly_tree` / `figure_plan.seed` / `structure_schema.seed`。须 **`--enable-step-parse`**。 |
-| **`shared/gen_demo_snap_step.py`** | 生成教学用 `demo_snap_plate.step`（无 CadQuery）。 |
-| **`shared/requirements-step.txt`** | CadQuery + cairosvg；**仅用户确认后** `pip install`（建议 Py3.9–3.12）。 |
+| **`shared/cad_venv.py`** | 探测 `tools/shared/cad-env`；已能 `import cadquery` 则 `skip_install=true`。 |
+| **`shared/bootstrap_cad_venv.py`** | 仅在未就绪时建 venv + `--isolated` pip（国内源 → pypi.org）。 |
+| **`shared/step_to_views.py`** | STEP → SVG（有 Cairo 再 PNG）。须 **`--enable-step-parse`**；请用 cad-env 的 Python。 |
+| **`shared/svg_screenshot.py`** | 短时 HTTP + 无头浏览器把 SVG 截成 PNG（端口先探测，用完关闭）。 |
+| **`shared/run_step_to_views.py`** | 探测 cad-env → 必要时 bootstrap → 出图 → 补 PNG。 |
+| **`shared/gen_demo_snap_step.py`** | 生成教学用 `tests/fixtures/cad/demo_snap_plate.step`（无 CadQuery）。 |
+| **`shared/requirements-step.txt`** | ASCII only；CadQuery + cairosvg；**只装进 cad-env**。 |
 
-流程纪律见 **`prompts/disclosure/project_scan.md`**「CAD / STEP」：有 STEP 先反问；仅有原生 CAD 则对话末尾提示导出 STEP。
+流程纪律见 **`prompts/disclosure/project_scan.md`**「CAD / STEP」：有 STEP 成文不中断，交底落盘后再反问；仅有原生 CAD 则交付回复末尾提示导出 STEP。投影图是普通材料（`kind: cad`），**不得当线稿、不得入文**；打分后可能作图生图参考。
 
-Windows 若无系统 Cairo，`cairosvg` 可能失败；`step_to_views` 会回退 **matplotlib 镶嵌投影** 出 PNG（仍写出 SVG）。建议 **Python 3.9–3.12** 隔离 venv 安装依赖（3.13 常无 CadQuery 轮子）。若全局 pip 配置了 `target` 指向共享目录，请对 venv 使用 `pip install --target <venv>/Lib/site-packages …`。
+CadQuery 官方轮子支持 **Python 3.10–3.12**（**不是** 3.13）。本机已是 3.11/3.12 就用当前解释器建 `cad-env`，不要强行找 3.10。无系统 Cairo 时 **保留 SVG**，用本技能已有的 Playwright 截 PNG。CAD 出图**不用** matplotlib（matplotlib 仅发明公式 PNG 可选）。
 
 ```bash
 python tools/shared/cad_scan.py -r knowledge --json
-pip install -r tools/shared/requirements-step.txt   # 用户确认后
-python tools/shared/step_to_views.py --enable-step-parse -i a.step -o outputs/case/cad_views
+python tools/shared/cad_venv.py
+python tools/shared/run_step_to_views.py --enable-step-parse -i a.step -o outputs/case/cad_views
 ```
 
 ---
@@ -64,35 +68,47 @@ python tools/shared/check_formula_plan.py -i outputs/case/formula_plan.yaml --ev
 
 成文纪律见 **`prompts/disclosure/invention/disclosure_builder.md` §7.7**。
 
-## 外观辅助线稿（`shared/`，可选，默认关闭）
+## 线稿规划（`shared/`，成文前必做）
 
 | 脚本 / 文档 | 作用 |
 |-------------|------|
-| **`prompts/shared/design_lineart_assist.md`** | Agent 流程：确认「是」→ 写 brief → 门禁 → **参考图**出线稿 |
-| **`shared/design_lineart_gate.py`** | 默认关；无源图拒绝；`--prepare-jobs` 写出 `lineart_assist/design_lineart_jobs.json` |
+| **`prompts/shared/image_gen.md`** | Agent 合同：合格已有线稿 / 图生图 / 文生图；CAD 不得当线稿入文 |
+| **`shared/image_gen.py`** | 读 figure_plan，打印 `mode` / `fallback` |
+
+```bash
+python tools/shared/image_gen.py --case-dir outputs/case
+```
+
+## 外观线稿（`shared/`，必做）
+
+| 脚本 / 文档 | 作用 |
+|-------------|------|
+| **`prompts/shared/design_lineart_assist.md`** | 不问用户；写 brief → 门禁 → 图生图或文生图 |
+| **`shared/design_lineart_gate.py`** | 默认开；无源图则允许文生图；`--prepare-jobs` 写出 `lineart_assist/design_lineart_jobs.json` |
 | **`references/schemas/design_lineart_brief.schema.yaml`** | 描述合同 |
 
 ```bash
-python tools/shared/design_lineart_gate.py --print-confirm
-python tools/shared/design_lineart_gate.py --enable-design-lineart --case-dir outputs/case --prepare-jobs
+python tools/shared/design_lineart_gate.py --case-dir outputs/case --prepare-jobs
 ```
 
-**禁止**纯文生图；辅助线稿默认 `use_in_disclosure: false`。
+生成的线稿默认入文。外观另将干净实拍一并写入 md 与 Word。CAD 不得 `use_in_disclosure: true`。
 
-## 实用新型结构辅助线稿（`shared/`，可选，默认关闭）
+## 实用新型结构线稿（`shared/`，必做）
 
 | 脚本 / 文档 | 作用 |
 |-------------|------|
-| **`prompts/shared/structure_lineart_assist.md`** | Agent 流程：确认「是」→ 写 brief → 门禁 → **参考图**出轮廓 → 按 Structure 叠件号 |
-| **`shared/structure_lineart_gate.py`** | 默认关；无源图 / 无 Structure 拒绝；`--prepare-jobs` 写出 `lineart_assist/structure_lineart_jobs.json` |
-| **`references/schemas/structure_lineart_brief.schema.yaml`** | 描述合同（与外观 `design_lineart_*` 分文件） |
+| **`prompts/shared/structure_lineart_assist.md`** | 不问用户；轮廓 → 按 Structure 叠件号 |
+| **`shared/structure_lineart_gate.py`** | 默认开；无 Structure 拒绝；无源图则允许文生图 |
+| **`shared/structure_callout_overlay.py`** | 读取大模型定位并持久化的归一化锚点，校验件号后以 SVG 曲线精确叠标 |
+| **`references/schemas/structure_lineart_brief.schema.yaml`** | 描述合同（与外观分文件） |
+| **`references/schemas/structure_callout_anchors.schema.yaml`** | 锚点持久化合同（`anchor` + `label` + 置信度） |
 
 ```bash
-python tools/shared/structure_lineart_gate.py --print-confirm
-python tools/shared/structure_lineart_gate.py --enable-structure-lineart --case-dir outputs/case --prepare-jobs
+python tools/shared/structure_lineart_gate.py --case-dir outputs/case --prepare-jobs
+python tools/shared/structure_callout_overlay.py --case-dir outputs/case --anchors outputs/case/structure_callout_anchors.yaml
 ```
 
-**禁止**纯文生图与自创件号；推荐 `callout_mode: overlay`；辅助线稿默认 `use_in_disclosure: false`。
+推荐 `callout_mode: overlay`：大模型只定位，Python/SVG 叠标，不做含件号的二次生图。叠标后须读图按 `parts` 名称核对引出线（改 YAML 重叠标，最多 2 轮）；脚本合法 ≠ 图面对。禁止自创件号；CAD 投影不是线稿。
 
 ## Office / mermaid（`shared/`）
 

@@ -45,6 +45,8 @@ python tools/patent_reader/vault/check_obsidian_env.py --set "D:\你的库路径
 | CSS 片段 `patent-reader` | 复制到 `.obsidian/snippets/` 并启用；笔记带 `cssclasses: patent-reader` |
 | 核心插件 **Bases** | 写入 `.obsidian/core-plugins.json` 开启 |
 | `patents.base`、解读索引、术语索引 | 写入 `Research/Patents/`（及术语目录） |
+
+仓库里 Bases 源稿是 `assets/obsidian/*.base.yaml`（部分技能市场不允许提交 `.base`）。拷进库时仍写成 Obsidian 认的 `.base`。
 | 关系图彩色 Groups | 写入 `.obsidian/graph.json`（无需社区插件）；过滤器**只排除**图片、`.json`、权项锚点/说明书段落旁路（**不要**用 `file:_解读_` 收成只显示解读笔记；解读用 Groups 着色） |
 
 Callout 观感（自动生效）：紫=著录/权要，绿=应用场景，橙=推测/公开线索，蓝=附图与 tip。

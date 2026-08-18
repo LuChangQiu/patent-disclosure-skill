@@ -42,7 +42,7 @@ def headed() -> bool:
 
 def playwright_installed() -> bool:
     try:
-        import playwright  # noqa: F401
+        import playwright
     except ImportError:
         return False
     return True

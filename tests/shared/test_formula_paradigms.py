@@ -10,8 +10,8 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from tools.shared.check_formula_plan import check_plan  # noqa: E402
-from tools.shared.formula_paradigms import load_paradigms, paradigm_by_id  # noqa: E402
+from tools.shared.check_formula_plan import check_plan
+from tools.shared.formula_paradigms import load_paradigms, paradigm_by_id
 
 
 class FormulaParadigmsTests(unittest.TestCase):

@@ -27,7 +27,7 @@ class MathRenderTests(unittest.TestCase):
     def test_inline_paren_with_nested_parens(self) -> None:
         """``\\(...\\)`` 内含 ``\\max(...)`` 时须整段匹配，不能露出转义符。"""
         try:
-            import matplotlib  # noqa: F401
+            import matplotlib
         except ImportError:
             self.skipTest("matplotlib not installed")
         from math_render import iter_inline_paren_spans, render_markdown_math
@@ -54,7 +54,7 @@ class MathRenderTests(unittest.TestCase):
 
     def test_block_and_inline(self) -> None:
         try:
-            import matplotlib  # noqa: F401
+            import matplotlib
         except ImportError:
             self.skipTest("matplotlib not installed")
         from math_render import render_markdown_math
@@ -74,7 +74,7 @@ class MathRenderTests(unittest.TestCase):
 
     def test_fallback_on_bad_latex(self) -> None:
         try:
-            import matplotlib  # noqa: F401
+            import matplotlib
         except ImportError:
             self.skipTest("matplotlib not installed")
         from math_render import render_markdown_math

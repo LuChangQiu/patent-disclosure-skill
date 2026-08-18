@@ -131,8 +131,8 @@ def recommend_action(
     iges_files: list[str] | None = None,
 ) -> str:
     """
-    ask_enable_step_parse — 发现 STEP，须中断反问
-    hint_export_step — 仅有原生/IGES，流程可继续，结束时提示导出
+    ask_enable_step_parse — 发现 STEP，交底落盘后再反问（成文不中断）
+    hint_export_step — 仅有原生/IGES，流程可继续，交付时提示导出
     none — 无相关文件
     """
     if step_files:
@@ -149,6 +149,6 @@ EXPORT_HINT_ZH = (
 )
 
 STEP_CONFIRM_ZH = (
-    "扫描发现 **`.step` / `.stp`**。是否开启 STEP 多视角解析？"
+    "扫描发现 **`.step` / `.stp`**。交底已落盘。是否开启 STEP 多视角解析？"
     "（默认关；选「是」将延迟安装 CadQuery 等依赖并生成多视角图。）请回复 **是** 或 **否**。"
 )

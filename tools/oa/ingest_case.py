@@ -15,17 +15,17 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from tools.oa.case_md import chunk_case, dump_case_markdown, parse_case_markdown  # noqa: E402
-from tools.oa.config import (  # noqa: E402
+from tools.oa.case_md import chunk_case, dump_case_markdown, parse_case_markdown
+from tools.oa.config import (
     is_vector_enabled,
     load_config,
     sqlite_path_from_config,
 )
-from tools.oa.embed import EmbedError, Embedder  # noqa: E402
-from tools.oa.pdf_text import read_document, write_extract  # noqa: E402
-from tools.oa.redact import redact_text  # noqa: E402
-from tools.oa.store import open_store, upsert_case  # noqa: E402
-from tools.oa.vault_layout import (  # noqa: E402
+from tools.oa.embed import EmbedError, Embedder
+from tools.oa.pdf_text import read_document, write_extract
+from tools.oa.redact import redact_text
+from tools.oa.store import open_store, upsert_case
+from tools.oa.vault_layout import (
     STATUS_DRAFT,
     STATUS_HISTORY,
     enrich_case_note,
@@ -223,7 +223,7 @@ def ingest_one(
         except EmbedError as exc:
             embed_error = str(exc)
             vector_mode = "meta_only_embed_failed"
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             embed_error = str(exc)
             vector_mode = "meta_only_embed_failed"
     elif meta.get("status") != STATUS_HISTORY:
@@ -278,7 +278,7 @@ def ingest_one(
             "canvas": refresh.get("canvas"),
             "counts": refresh.get("counts"),
         }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         result["oa_refresh_error"] = str(exc)
     return result
 

@@ -34,7 +34,7 @@ def main(argv: list[str] | None = None) -> int:
     os.environ.setdefault("EPUB_WAF_MAX_WAIT_SEC", "180")
 
     try:
-        import playwright  # noqa: F401
+        import playwright
     except ImportError:
         print("请先安装: pip install -r tools/crawl/requirements-cnipa.txt", file=sys.stderr)
         return 1

@@ -10,7 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools" / "patent_reader"))
 
-from vault.desc_paragraphs import (  # noqa: E402
+from vault.desc_paragraphs import (
     format_citation_wikilinks,
     materialize_description_paragraphs,
     parse_cited_paragraph_numbers,

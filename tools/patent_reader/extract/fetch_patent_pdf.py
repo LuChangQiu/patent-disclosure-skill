@@ -38,7 +38,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-from patent_type import resolve_reader_patent_type  # noqa: E402
+from patent_type import resolve_reader_patent_type
 
 UA = "Mozilla/5.0 (compatible; patent-disclosure-skill/1.0)"
 DEFAULT_TIMEOUT = 90

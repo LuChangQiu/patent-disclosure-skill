@@ -16,8 +16,8 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from tools.oa.config import load_config  # noqa: E402
-from tools.oa.vault_layout import refresh_oa_vault  # noqa: E402
+from tools.oa.config import load_config
+from tools.oa.vault_layout import refresh_oa_vault
 
 
 def main(argv: list[str] | None = None) -> int:

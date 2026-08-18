@@ -202,7 +202,7 @@ def clone_omml(element):
 
 def omml_available() -> bool:
     try:
-        import latex2mathml  # noqa: F401
+        import latex2mathml
 
         return True
     except ImportError:

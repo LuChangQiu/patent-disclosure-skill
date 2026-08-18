@@ -18,8 +18,10 @@ figures:
     path: ""                 # 相对案件根或 knowledge 的路径
     covers: []               # 实用新型：parts.id；外观：views.name 或要点短标签
     kind: lineart            # lineart | cad | photo_clean | photo_scene | other
-    score: 0                 # 0–100；同批内越高越优先入文
-    use_in_disclosure: true
+    relevance: 0             # 0–100，与本案是否同一对象
+    quality: 0               # 0–100：清晰、少遮挡、不是瞎画
+    score: 0                 # 可与 0.5*relevance+0.5*quality 一致
+    use_in_disclosure: true  # 入文才 true。cad 禁止。外观：实拍+线稿都可 true；实用：仅合格 lineart
     reason: ""               # 选用或剔除的一句话
     relates_to: []           # 可选；图际关联，见下
   - fig: 2
@@ -67,19 +69,29 @@ figures:
 - 外观多视：可用 `same_state` / `alternate_view` 互链；场景参考图可不写。  
 - 成文时：「如图 N…如图 M 为其局部…」须与 `relates_to` 一致。
 
+## 扫描打分（填表强制）
+
+对每张候选图 **Read 识图**，写 `kind` + `relevance` + `quality` + `score`。细则见 `prompts/shared/image_gen.md`。
+
+- `kind: lineart` **仅当**材料本来就是结构/外观线稿（专利附图、干净黑白轮廓），且内容匹配、不是瞎画。  
+- CAD / STEP 投影写 `kind: cad`，实拍写 `photo_clean` / `photo_scene`。  
+- **合格已有线稿**（可入文、可跳过生成）：`kind: lineart` 且 `score>=70`；若写了分项则 **relevance 与 quality 均 >=70**。  
+- `kind: cad`：**禁止** `use_in_disclosure: true`。`reason` 写明「CAD 投影，仅作生图材料」。  
+- 实拍不得标成 `kind: lineart`。外观的干净实拍（`photo_clean`）**要入文**（与线稿一起进 md 和 Word）。实用新型实拍默认不入文。
+
 ## 排序启发式（填表时打分）
 
 **实用新型（高→低）**
 
-1. `lineart` / `cad` + `assembly` 或关键 `detail`，且 `covers` 命中保护相关件号  
-2. `photo_clean` 结构照 / 局部 crop  
+1. 合格 `lineart` + `assembly` 或关键 `detail`，且 `covers` 命中保护相关件号 → 可入文  
+2. `cad` / `photo_clean`：只打分，作图生图参考，**不入文**  
 3. `photo_scene` / 与主题无关 → `use_in_disclosure: false`，`role: rejected` 或 `reference`
 
 **外观（高→低）**
 
-1. 产品区清晰的 `perspective` / `ortho`（`photo_clean` 或线稿均可）  
-2. 造型 `detail`  
-3. 重场景、广告包装 → 默认 `reference` 或不入文；缺正式六视时在 AppearanceSchema `uncertain` 标明
+1. 合格 `lineart` 的立体/正交 **与** 对应 `photo_clean` 实拍 → **都入文**（md + Word）  
+2. `cad`：只打分，作图生图参考，**不入文**  
+3. 重场景、广告包装（`photo_scene`）→ 默认 `reference` 或不入文；缺正式六视时在 AppearanceSchema `uncertain` 标明
 
 ## 跨图核对（填表强制）
 
@@ -91,7 +103,7 @@ figures:
 ## 必填
 
 - `patent_type`、`theme_summary`、`figures`（可空数组，但空则须在 schema `uncertain` 说明无可用图）  
-- 每条：`path`、`role`、`kind`、`score`、`use_in_disclosure`、`reason`  
+- 每条：`path`、`role`、`kind`、`score`、`use_in_disclosure`、`reason`（建议同时写 `relevance` / `quality`）  
 - 凡 `use_in_disclosure: true` 须有唯一正整数 `fig`（从 1 连续编号为佳）  
 - `relates_to` 可空数组；满足「总装+局部」条件时不得空置（见上）
 
@@ -106,6 +118,12 @@ figures:
 
 更新动作：重评 `score` / `use_in_disclosure` / `fig` 序号 / `relates_to`，改写 `theme_summary` 与 `reason`；已剔除图保留条目并设 `use_in_disclosure: false`（便于审计），勿默默丢路径；被删图若仍被 `relates_to` 引用须改写或清除。
 
-## 外观辅助线稿（可选）
+## 线稿（必做）
 
-用户确认开启后，由 `design_lineart_assist.md` 生成的 AI 线稿建议追加为 `kind: lineart`、`use_in_disclosure: false`、`reason` 含「AI 辅助线稿（非申报终稿）」，并用 `relates_to` 链回源实拍/参考图。详见 `references/schemas/design_lineart_brief.schema.yaml`。
+实用新型 / 外观成文前必须有入文线稿，来源只有两条（见 `prompts/shared/image_gen.md`）：
+
+1. 材料里已有合格 `kind: lineart`  
+2. 大模型生成（图生图，或降级「先描述再文生图」/ 文生图）
+
+生成的线稿追加为 `kind: lineart`、`use_in_disclosure: true`。  
+**外观**：干净实拍同样入文，与线稿成对出现在 Markdown 和 Word。CAD 投影始终不入文。详见 `design_lineart_assist.md` / `structure_lineart_assist.md`。

@@ -621,7 +621,7 @@ def run_selftest(path: str | Path | None = None) -> dict[str, Any]:
             }
         )
         return out
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         out.update(
             {
                 "ok": False,

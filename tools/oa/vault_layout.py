@@ -501,12 +501,22 @@ def write_oa_index(oa_root: Path, vault: Path | None = None) -> Path:
     return path
 
 
+def _repo_oa_base_src(root: Path) -> Path | None:
+    """技能市场上架禁止提交 *.base；仓库源稿为 oa.base.yaml。"""
+    assets = root / "assets" / "obsidian"
+    for name in ("oa.base.yaml", "oa.base"):
+        path = assets / name
+        if path.is_file():
+            return path
+    return None
+
+
 def write_oa_base(oa_root: Path) -> Path:
     dest = oa_root / "_OA看板.base"
     # 优先仓库模板
     root = Path(__file__).resolve().parents[2]
-    src = root / "assets" / "obsidian" / "oa.base"
-    if src.is_file():
+    src = _repo_oa_base_src(root)
+    if src is not None:
         text = src.read_text(encoding="utf-8").replace("{{OA_DIR}}", "oa")
         dest.write_text(text, encoding="utf-8")
         return dest

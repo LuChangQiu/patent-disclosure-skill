@@ -11,8 +11,8 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools" / "shared"))
 
-import stdio_utf8  # noqa: E402
-from md_to_docx import MathOutcomeStats  # noqa: E402
+import stdio_utf8
+from md_to_docx import MathOutcomeStats
 
 
 class StdioUtf8Tests(unittest.TestCase):

@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
-"""外观辅助线稿门禁：默认关闭；无参考图则拒绝（禁止纯文生图）。
+"""外观线稿门禁：成文前默认开。无参考图则文生图。CAD 投影不得当线稿入文。
 
-示例：
   python tools/shared/design_lineart_gate.py --case-dir outputs/case --check
-  python tools/shared/design_lineart_gate.py --enable-design-lineart \\
-    --case-dir outputs/case --prepare-jobs
+  python tools/shared/design_lineart_gate.py --case-dir outputs/case --prepare-jobs
 """
 from __future__ import annotations
 
@@ -16,17 +14,24 @@ from pathlib import Path
 from typing import Any
 
 ENABLE_ENV = "PATENT_SKILL_DESIGN_LINEART"
+SKIP_ENV = "PATENT_SKILL_SKIP_LINEART"
 
-CONFIRM_ZH = (
-    "是否开启**外观辅助线稿**？（默认关；仅交底草稿，非申报终稿。"
-    "开启后将基于已有实物/参考图生成描述与线稿，**无图则不能开启**。）请回复 **是** 或 **否**。"
-)
+CONFIRM_ZH = ""
 
 
-def parse_enabled(cli_flag: bool) -> bool:
-    if cli_flag:
-        return True
-    return os.environ.get(ENABLE_ENV, "").strip().lower() in {"1", "true", "yes", "on"}
+def parse_enabled(cli_flag: bool = False, *, skip: bool = False) -> bool:
+    if skip:
+        return False
+    if os.environ.get(SKIP_ENV, "").strip().lower() in {"1", "true", "yes", "on"}:
+        return False
+    if os.environ.get("PATENT_SKILL_SKIP_DESIGN_LINEART", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }:
+        return False
+    return True
 
 
 def _load_data(path: Path) -> dict[str, Any]:
@@ -83,7 +88,6 @@ def validate_brief(brief: dict[str, Any], case_dir: Path) -> list[str]:
             continue
         paths = v.get("source_paths") or []
         if not paths:
-            errors.append(f"views[{i}] ({v.get('view_name')}) 缺少 source_paths（禁止纯文生图）")
             continue
         ok_any = False
         for raw in paths:
@@ -148,10 +152,11 @@ def build_jobs(brief: dict[str, Any], case_dir: Path) -> list[dict[str, Any]]:
                 "gen_prompt": prompt,
                 "output_path": out_path,
                 "absolute_output_path": str((case_dir / out_path).resolve()),
-                "forbid_text_only": True,
+                "forbid_text_only": False,
                 "host_hint": (
-                    "Use the current host's image generation with these files as visual references; "
-                    "do not hardcode a vendor tool name; text-only generation is forbidden."
+                    "If reference_images exist: img2img first; if unavailable, "
+                    "describe each reference then txt2img (see prompts/shared/image_gen.md). "
+                    "If no references: txt2img from gen_prompt. CAD is never disclosure lineart."
                 ),
             }
         )
@@ -168,7 +173,7 @@ def run_check(case_dir: Path, *, enabled: bool) -> dict[str, Any]:
     }
     if not enabled:
         result["errors"].append(
-            f"design_lineart 默认关闭。用户确认「是」后使用 --enable-design-lineart 或 {ENABLE_ENV}=1"
+            f"design_lineart 已跳过（--skip 或 {SKIP_ENV}=1 / PATENT_SKILL_SKIP_DESIGN_LINEART=1）"
         )
         return result
 
@@ -180,16 +185,8 @@ def run_check(case_dir: Path, *, enabled: bool) -> dict[str, Any]:
         result["errors"].append("案件目录缺少 figure_plan / appearance_schema")
         return result
 
-    plan = _load_data(plan_path) if plan_path else {}
-    sources = collect_source_images_from_plan(plan, case_dir) if plan else []
-    if not sources and not brief_path:
-        result["errors"].append("figure_plan 中无可用图片路径，禁止开启辅助线稿（禁止纯文生图）")
-        result["hints"].append(CONFIRM_ZH)
-        return result
-
     if not brief_path:
         result["errors"].append("缺少 design_lineart_brief.yaml；请先按 design_lineart_assist.md 填写")
-        result["hints"].append(f"可用源图数: {len(sources)}")
         return result
 
     brief = _load_data(brief_path)
@@ -201,22 +198,18 @@ def run_check(case_dir: Path, *, enabled: bool) -> dict[str, Any]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    p = argparse.ArgumentParser(description="外观辅助线稿门禁（默认关；无参考图拒绝）")
+    p = argparse.ArgumentParser(description="外观线稿门禁（默认开；无参考图则文生图）")
     p.add_argument("--case-dir", type=Path, help="案件 outputs 目录")
-    p.add_argument("--enable-design-lineart", action="store_true")
+    p.add_argument("--enable-design-lineart", action="store_true", help="兼容旧旗标；默认已开启")
+    p.add_argument("--skip-design-lineart", action="store_true")
     p.add_argument("--check", action="store_true", help="仅校验")
     p.add_argument("--prepare-jobs", action="store_true", help="校验通过后写出 jobs JSON")
-    p.add_argument("--print-confirm", action="store_true", help="打印反问文案")
     args = p.parse_args(argv)
 
-    if args.print_confirm:
-        print(CONFIRM_ZH)
-        return 0
-
     if not args.case_dir:
-        p.error("需要 --case-dir（或改用 --print-confirm）")
+        p.error("需要 --case-dir")
 
-    enabled = parse_enabled(args.enable_design_lineart)
+    enabled = parse_enabled(args.enable_design_lineart, skip=args.skip_design_lineart)
     case_dir = args.case_dir.resolve()
     if not case_dir.is_dir():
         print(json.dumps({"ok": False, "errors": [f"不是目录: {case_dir}"]}, ensure_ascii=False), file=sys.stderr)
@@ -229,6 +222,13 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         brief = _load_data(Path(report["brief_path"]))
         jobs = build_jobs(brief, case_dir)
+        try:
+            from image_gen import attach_job_mode, decide_mode, load_plan
+
+            decision = decide_mode(load_plan(case_dir) or {}, case_dir)
+            jobs = [attach_job_mode(j, decision) for j in jobs]
+        except Exception:
+            decision = {}
         if not jobs:
             report["ok"] = False
             report["errors"] = list(report.get("errors") or []) + ["未生成任何 job"]
@@ -238,9 +238,10 @@ def main(argv: list[str] | None = None) -> int:
         out.parent.mkdir(parents=True, exist_ok=True)
         payload = {
             "ok": True,
-            "forbid_text_only": True,
+            "forbid_text_only": False,
+            "decision": decision,
             "jobs": jobs,
-            "note": "出图须附带 source_paths/reference_images 作视觉参考；禁止纯文生图；勿写死某一宿主工具名",
+            "note": "See prompts/shared/image_gen.md: img2img, else describe then txt2img. CAD is not lineart.",
         }
         out.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
         report["jobs_path"] = str(out)

@@ -11,14 +11,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools" / "patent_reader"))
 
-from shared.common import load_ipc_application_hints  # noqa: E402
-from extract.extract_patent_text import extract_glossary  # noqa: E402
-from analyze.lint_patent_note import REQUIRED_HEADINGS, main as lint_main  # noqa: E402
-from vault.obsidian import (  # noqa: E402
+from shared.common import load_ipc_application_hints
+from extract.extract_patent_text import extract_glossary
+from analyze.lint_patent_note import REQUIRED_HEADINGS, main as lint_main
+from vault.obsidian import (
     append_glossary_backlinks,
     bootstrap_vault,
     claim_delta_text,
     enrich_note_frontmatter,
+    repo_obsidian_base_src,
     ensure_glossary_stub,
     evidence_scope_zh,
     is_spurious_patent_note,
@@ -27,8 +28,8 @@ from vault.obsidian import (  # noqa: E402
     repair_glossary_backlinks,
     scan_glossary_index,
 )
-from analyze.validate_public_clues import validate_clues  # noqa: E402
-from vault.write_patent_obsidian_note import (  # noqa: E402
+from analyze.validate_public_clues import validate_clues
+from vault.write_patent_obsidian_note import (
     _ensure_nav_section,
     harvest_glossary_from_note,
     harvest_narrative_from_note,
@@ -856,6 +857,20 @@ def test_bootstrap_creates_appearance() -> None:
         assert any("graph_colors:" in a for a in actions)
 
 
+def test_repo_obsidian_bases_are_yaml_templates() -> None:
+    """技能市场上架禁止提交 *.base；仓库只保留 *.base.yaml。"""
+    assets = ROOT / "assets" / "obsidian"
+    for stem in ("patents", "glossary", "oa"):
+        yaml_p = assets / f"{stem}.base.yaml"
+        raw = assets / f"{stem}.base"
+        assert yaml_p.is_file(), f"missing marketplace-safe source {yaml_p.name}"
+        assert not raw.exists(), f"{raw.name} must not be committed"
+
+    src = repo_obsidian_base_src("patents")
+    assert src is not None
+    assert src.name == "patents.base.yaml"
+
+
 def test_harvest_narrative_from_note() -> None:
     note = """# t
 
@@ -1177,6 +1192,7 @@ def main() -> int:
     test_optional_path_not_cwd()
     test_obsidian_detect_and_env_disable()
     test_bootstrap_creates_appearance()
+    test_repo_obsidian_bases_are_yaml_templates()
     test_evidence_label_zh_in_frontmatter()
     test_glossary_stub_fills_section5_definition()
     test_harvest_glossary_from_note_section5()

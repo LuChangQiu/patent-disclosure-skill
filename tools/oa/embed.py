@@ -58,7 +58,7 @@ class Embedder:
             ) from exc
         try:
             self._local = SentenceTransformer(self.model)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             raise EmbedError(f"本地模型加载失败: {exc}") from exc
 
     def embed_texts(
@@ -81,7 +81,7 @@ class Embedder:
                 raise EmbedError(f"未知 provider: {self.provider}")
         except EmbedError:
             raise
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             raise EmbedError(f"embedding 失败: {exc}") from exc
         if self.dimensions and arr.shape[1] != self.dimensions:
             self.dimensions = int(arr.shape[1])

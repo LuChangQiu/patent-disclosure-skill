@@ -51,9 +51,9 @@
 图示：
 
 - **只嵌** `figure_plan.yaml` 中 `use_in_disclosure: true` 的图，按 `fig` 序号写「如图 N」；**禁止**绕过清单扫全 `assets/` 临场挑图。  
-- 清单已按启发式排序：优先 `lineart` / `cad`；场景杂图应已标不入文。若清单缺失或与主题不符，先按 `fill_structure_schema.md` **重写 figure_plan** 再成文。  
+- **入文只选合格 `lineart`**；`cad` / 实拍禁止当线稿入文。若清单缺失或与主题不符，先按 `fill_structure_schema.md` **重写 figure_plan** 再成文。  
 - **多图联读**：正文「如图 M 为图 N 的局部/剖视…」须与 `relates_to` 一致；跨图件号同一套命名。  
-- **辅助结构线稿**（可选）：仅当用户已回 **是** 并按 `shared/structure_lineart_assist.md` 生成时，可在「其它」或附图说明中一句标明「另附 AI 结构线稿草稿（件号对齐部件表）」；**不得**替代原始结构图作为唯一证据；默认不入「如图 N」主序列（除非用户要求入文并已改 figure_plan）。图上件号须与 `structure_schema.parts` 一致。  
+- **结构线稿（必做）**：成文前已按 `shared/image_gen.md` + `shared/structure_lineart_assist.md` 选用或生成；图上件号须与 `structure_schema.parts` 一致。CAD 投影不得入文。  
 - 连接关系可用表格；必要时用简短 mermaid `flowchart` 表达「A —卡扣→ B」（**不是**发明那套系统框图/调度流程图）。  
 - 若有 mermaid，定稿可用 `tools/shared/mermaid_render.py` 转 PNG。
 
@@ -81,7 +81,8 @@
 - [ ] 总装+局部入文时 `relates_to` 已写且正文联读一致  
 - [ ] 查新使用 `--type utility_model`（或 all 后人工筛）  
 - [ ] 未把外观美感 / 纯方法写成构造主线  
-- [ ] 若开启结构辅助线稿：有用户「是」、有参考图、件号对齐 StructureSchema、无纯文生图；辅助条默认未强行入正文  
+- [ ] 结构线稿已按 image_gen + structure_lineart_assist 选用或生成；件号对齐 StructureSchema；CAD 未入文  
 - [ ] 交付回复：若适用，已按 **`prompts/evolution/soft_nudge.md`** 决定是否加政策感知一句（低频）
+- [ ] 交付回复末尾：若 cad_scan 为 `ask_enable_step_parse`，交底已落盘后再反问是否开启 STEP 解析；未得「是」未装依赖
 
 模版表例见同目录 **`template_reference.md`**。

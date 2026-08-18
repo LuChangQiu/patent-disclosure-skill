@@ -10,7 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools" / "patent_reader"))
 
-from vault.note_cites import (  # noqa: E402
+from vault.note_cites import (
     enhance_note_citations,
     escape_wikilink_pipes_in_tables,
     format_claim_wikilinks,
@@ -90,7 +90,7 @@ class NoteCitesTest(unittest.TestCase):
 
 class CluesIndexTableTest(unittest.TestCase):
     def test_render_clues_index_table_wikilinks(self) -> None:
-        from vault.clue_vault import render_clues_index  # noqa: E402
+        from vault.clue_vault import render_clues_index
 
         body = render_clues_index(
             [

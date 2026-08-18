@@ -400,7 +400,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     try:
-        import matplotlib  # noqa: F401
+        import matplotlib
     except ImportError:
         print("请先安装: pip install matplotlib", file=sys.stderr)
         return 1

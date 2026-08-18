@@ -42,6 +42,6 @@
 2. AppearanceSchema 定稿路径  
 3. **`figure_plan.yaml`**（入文视图清单；立体/六视优先；支撑要点的多视 `relates_to` 已写；场景图默认不入文除非明确启用）
 
-可选（默认关）：材料有图时反问是否开启辅助线稿 → `shared/design_lineart_assist.md`（有图才可；禁止纯文生图）。
+成文前必做：`shared/image_gen.md` + `shared/design_lineart_assist.md`（不问用户；已有合格线稿则入文，否则图生图或文生图）。干净实拍与线稿都写入 md 与 Word；CAD/实拍不得标成线稿。
 
 下一步：**`Read`** 同目录 `disclosure_builder.md` + `template_reference.md`；查新 **`--type design`**。

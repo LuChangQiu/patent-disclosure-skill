@@ -183,3 +183,7 @@ Word 公式主路径为 `latex2mathml` → 可编辑 OMML；失败则 **留 LaTe
 ## 7.7 交付回复：政策感知低频提示（可选）
 
 定稿交付回复末尾，按 **`prompts/evolution/soft_nudge.md`** 决定是否加 **至多一句**（默认低频；不入正文；不自动进入模式 C）。
+
+## 7.8 交付回复：STEP 解析（可选，默认关）
+
+若 Step 2 / 补材料的 `cad_scan` 为 `ask_enable_step_parse`：**先完成交底落盘**，再在**本轮回复末尾**反问一次是否开启 STEP 多视角解析（文案见 `cad_scan` 的 `messages.ask_enable_step_parse`）。**禁止**在 Step 2 中断成文。未得 **是** 禁止 `bootstrap_cad_venv.py` / `run_step_to_views.py`。用户成文前已主动要求开启的除外。`hint_export_step` 则仅在交付末尾提示导出 STEP。细则见 `project_scan.md`「CAD / STEP」。

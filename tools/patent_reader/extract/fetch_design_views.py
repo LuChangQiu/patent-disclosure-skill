@@ -46,10 +46,10 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urljoin
 
-from patent_type import TYPE_DESIGN, resolve_reader_patent_type  # noqa: E402
+from patent_type import TYPE_DESIGN, resolve_reader_patent_type
 
 try:
-    from cnipa_epub_crawler import (  # noqa: E402
+    from cnipa_epub_crawler import (
         _launch_browser,
         _new_context,
         search_epub_keyword_with_page,
@@ -63,7 +63,7 @@ except ImportError as e:  # pragma: no cover
         f"导入错误: {e}"
     ) from e
 
-from playwright.sync_api import sync_playwright  # noqa: E402
+from playwright.sync_api import sync_playwright
 
 EPUB_BASE = "http://epub.cnipa.gov.cn"
 IMG_PATH_RE = re.compile(

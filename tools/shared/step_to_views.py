@@ -1,21 +1,19 @@
 # -*- coding: utf-8 -*-
-"""STEP（.step/.stp）→ 多视角 PNG + 可选装配树 / figure_plan 种子。
+"""STEP (.step/.stp) -> multi-view SVG (+ PNG via Cairo or svg_screenshot.py).
 
-**默认关闭**：必须显式传入 ``--enable-step-parse``（或环境变量
-``PATENT_SKILL_STEP_PARSE=1``），且依赖需用户确认后安装：
+Default OFF: pass ``--enable-step-parse`` (or ``PATENT_SKILL_STEP_PARSE=1``).
+Run via cad-env (Python 3.10-3.12). PNG backends: cairosvg, else Playwright
+(svg_screenshot.py). matplotlib is not used on this path.
 
-  pip install -r tools/shared/requirements-step.txt
-
-示例：
-
-  python tools/shared/step_to_views.py --check-deps
-  python tools/shared/step_to_views.py --enable-step-parse -i model.step -o outputs/case/cad_views
+  python tools/shared/cad_venv.py
+  python tools/shared/run_step_to_views.py --enable-step-parse -i model.step -o outputs/case/cad_views
 """
 from __future__ import annotations
 
 import argparse
 import json
 import os
+import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -25,7 +23,7 @@ _SHARED = Path(__file__).resolve().parent
 if str(_SHARED) not in sys.path:
     sys.path.insert(0, str(_SHARED))
 
-from cad_formats import is_step  # noqa: E402
+from cad_formats import is_step
 
 # 标准工程视图：名称 → CadQuery SVG projectionDir
 DEFAULT_VIEWS: dict[str, tuple[float, float, float]] = {
@@ -41,23 +39,14 @@ ENABLE_ENV = "PATENT_SKILL_STEP_PARSE"
 def _cairosvg_usable() -> tuple[bool, str]:
     """cairosvg 依赖系统 Cairo；Windows 常缺 DLL，此时不算硬失败。"""
     try:
-        import cairosvg  # noqa: F401
+        import cairosvg
 
         # 触发一次底层 cairo 加载（仅 import 有时不够）
         getattr(cairosvg, "svg2png")
-        import cairocffi  # type: ignore  # noqa: F401
+        import cairocffi  # type: ignore
 
         return True, getattr(cairosvg, "__version__", "unknown")
-    except Exception as e:  # noqa: BLE001
-        return False, str(e)
-
-
-def _matplotlib_usable() -> tuple[bool, str]:
-    try:
-        import matplotlib  # noqa: F401
-
-        return True, getattr(matplotlib, "__version__", "unknown")
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         return False, str(e)
 
 
@@ -66,24 +55,19 @@ def deps_status() -> dict[str, Any]:
     versions: dict[str, str] = {}
     hints: list[str] = []
     try:
-        import cadquery as cq  # noqa: F401
+        import cadquery as cq
 
         versions["cadquery"] = getattr(cq, "__version__", "unknown")
-    except Exception as e:  # noqa: BLE001 — 探测用
+    except Exception as e:
         missing.append(f"cadquery ({e})")
 
     cairo_ok, cairo_info = _cairosvg_usable()
     if cairo_ok:
         versions["cairosvg"] = cairo_info
     else:
-        hints.append(f"cairosvg/Cairo 不可用，将尝试 matplotlib 回退: {cairo_info}")
-
-    mpl_ok, mpl_info = _matplotlib_usable()
-    if mpl_ok:
-        versions["matplotlib"] = mpl_info
-    elif not cairo_ok:
-        missing.append(
-            f"PNG 后端缺失：需 cairosvg(+系统 Cairo) 或 matplotlib；cairosvg={cairo_info}; matplotlib={mpl_info}"
+        hints.append(
+            "cairosvg/Cairo unavailable; keep SVG and rasterize with svg_screenshot.py "
+            f"(headless browser). ({cairo_info})"
         )
 
     return {
@@ -91,7 +75,8 @@ def deps_status() -> dict[str, Any]:
         "missing": missing,
         "versions": versions,
         "hints": hints,
-        "install": "pip install -r tools/shared/requirements-step.txt",
+        "install": "python tools/shared/bootstrap_cad_venv.py",
+        "png": "cairosvg" if cairo_ok else "svg_or_browser",
     }
 
 
@@ -124,7 +109,7 @@ def extract_assembly_tree(step_path: Path) -> dict[str, Any]:
         from OCP.TDocStd import TDocStd_Document
         from OCP.XCAFApp import XCAFApp_Application
         from OCP.XCAFDoc import XCAFDoc_DocumentTool
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         tree["uncertain"].append(f"OCP/XCAF 不可用: {e}")
         return _fallback_solids_tree(step_path, tree)
 
@@ -176,7 +161,7 @@ def extract_assembly_tree(step_path: Path) -> dict[str, Any]:
         if not parts:
             tree["uncertain"].append("XCAF 未枚举到子件，仅有自由形状根")
         return tree
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         tree["uncertain"].append(f"XCAF 解析异常: {e}")
         return _fallback_solids_tree(step_path, tree)
 
@@ -202,41 +187,11 @@ def _fallback_solids_tree(step_path: Path, tree: dict[str, Any]) -> dict[str, An
         tree["parts"] = parts
         tree["method"] = "solid_count"
         tree["solid_count"] = n
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         tree["parts"] = [{"id": "1", "name": step_path.stem, "label_path": step_path.stem}]
         tree["method"] = "stem_only"
         tree["uncertain"].append(f"无法计数 SOLID: {e}")
     return tree
-
-
-def _project_point(
-    p: tuple[float, float, float],
-    direction: tuple[float, float, float],
-) -> tuple[float, float]:
-    """把 3D 点投影到以 direction 为视线的正交平面（构造简易相机基）。"""
-    import math
-
-    dx, dy, dz = direction
-    norm = math.sqrt(dx * dx + dy * dy + dz * dz) or 1.0
-    zx, zy, zz = dx / norm, dy / norm, dz / norm
-    # up ≈ Z，退化时用 Y
-    ux, uy, uz = 0.0, 0.0, 1.0
-    if abs(zx * ux + zy * uy + zz * uz) > 0.9:
-        ux, uy, uz = 0.0, 1.0, 0.0
-    # right = up × forward? 用 forward × up 得 right
-    rx = zy * uz - zz * uy
-    ry = zz * ux - zx * uz
-    rz = zx * uy - zy * ux
-    rn = math.sqrt(rx * rx + ry * ry + rz * rz) or 1.0
-    rx, ry, rz = rx / rn, ry / rn, rz / rn
-    # up' = forward × right
-    ux = zy * rz - zz * ry
-    uy = zz * rx - zx * rz
-    uz = zx * ry - zy * rx
-    x, y, z = p
-    u = x * rx + y * ry + z * rz
-    v = x * ux + y * uy + z * uz
-    return u, v
 
 
 def _svg_to_png_cairo(svg_path: Path, png_path: Path) -> None:
@@ -245,48 +200,39 @@ def _svg_to_png_cairo(svg_path: Path, png_path: Path) -> None:
     cairosvg.svg2png(url=str(svg_path), write_to=str(png_path))
 
 
-def _shape_to_png_matplotlib(
-    shape: Any,
-    direction: tuple[float, float, float],
-    png_path: Path,
-    *,
-    size: int = 900,
-) -> None:
-    """无系统 Cairo 时：镶嵌三角面 → 正交投影线框 PNG（matplotlib Agg）。"""
-    import matplotlib
+def _host_python() -> str | None:
+    env_py = os.environ.get('PATENT_SKILL_HOST_PYTHON', '').strip()
+    if env_py and Path(env_py).is_file():
+        return env_py
+    try:
+        from cad_venv import host_python
 
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
-    from matplotlib.collections import LineCollection
+        hp = host_python()
+        if hp and Path(hp).is_file():
+            return hp
+    except Exception:
+        pass
+    return sys.executable
 
-    solid = shape.val()
-    # CadQuery Shape.tessellate → (Vector list, triangle index list)
-    verts, tris = solid.tessellate(0.35)
-    pts = [(float(v.x), float(v.y), float(v.z)) for v in verts]
-    proj = [_project_point(p, direction) for p in pts]
-    edges: set[tuple[tuple[float, float], tuple[float, float]]] = set()
-    for a, b, c in tris:
-        tri = (a, b, c)
-        for i in range(3):
-            i0, i1 = tri[i], tri[(i + 1) % 3]
-            p0, p1 = proj[i0], proj[i1]
-            key = (p0, p1) if p0 <= p1 else (p1, p0)
-            edges.add(key)
-    segs = list(edges)
-    fig, ax = plt.subplots(figsize=(size / 100, size / 100), dpi=100)
-    if segs:
-        ax.add_collection(LineCollection(segs, colors="black", linewidths=0.6))
-        xs = [p[0] for s in segs for p in s]
-        ys = [p[1] for s in segs for p in s]
-        pad_x = (max(xs) - min(xs)) * 0.08 + 1e-3
-        pad_y = (max(ys) - min(ys)) * 0.08 + 1e-3
-        ax.set_xlim(min(xs) - pad_x, max(xs) + pad_x)
-        ax.set_ylim(min(ys) - pad_y, max(ys) + pad_y)
-    ax.set_aspect("equal")
-    ax.axis("off")
-    fig.tight_layout(pad=0.1)
-    fig.savefig(png_path, dpi=100, facecolor="white")
-    plt.close(fig)
+
+def _rasterize_svgs_browser(svg_paths: list[Path]) -> dict[str, Any]:
+    if not svg_paths:
+        return {'ok': True, 'converted': []}
+    host = _host_python()
+    if not host:
+        return {'ok': False, 'error': 'no_host_python'}
+    views_dir = svg_paths[0].parent
+    cmd = [host, str(_SHARED / 'svg_screenshot.py'), '--dir', str(views_dir)]
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
+    except (OSError, subprocess.SubprocessError) as e:
+        return {'ok': False, 'error': str(e)}
+    if proc.stderr:
+        sys.stderr.write(proc.stderr)
+    try:
+        return json.loads(proc.stdout) if proc.stdout.strip() else {'ok': proc.returncode == 0}
+    except json.JSONDecodeError:
+        return {'ok': proc.returncode == 0, 'raw': (proc.stdout or '')[-1000:]}
 
 
 def render_views(
@@ -306,39 +252,51 @@ def render_views(
     results: list[dict[str, Any]] = []
 
     for name, direction in views.items():
-        svg_path = out_dir / f"{stem}_{name}.svg"
-        png_path = out_dir / f"{stem}_{name}.png"
+        svg_path = out_dir / f'{stem}_{name}.svg'
+        png_path = out_dir / f'{stem}_{name}.png'
         cq.exporters.export(
             shape,
             str(svg_path),
             cq.exporters.ExportTypes.SVG,
             opt={
-                "projectionDir": direction,
-                "showAxes": False,
-                "showHidden": False,
-                "strokeWidth": 0.2,
+                'projectionDir': direction,
+                'showAxes': False,
+                'showHidden': False,
+                'strokeWidth': 0.2,
             },
         )
-        png_backend = "cairosvg"
-        try:
-            if cairo_ok:
+        png_backend = 'none'
+        png_written = False
+        if cairo_ok:
+            try:
                 _svg_to_png_cairo(svg_path, png_path)
-            else:
-                raise RuntimeError("cairosvg unavailable")
-        except Exception:
-            _shape_to_png_matplotlib(shape, direction, png_path)
-            png_backend = "matplotlib_tessellate"
-        role = "assembly" if name == "iso" else "ortho"
+                png_written = png_path.is_file()
+                png_backend = 'cairosvg'
+            except Exception:
+                png_written = False
+        role = 'assembly' if name == 'iso' else 'ortho'
         results.append(
             {
-                "name": name,
-                "role": role,
-                "png": str(png_path.resolve()),
-                "svg": str(svg_path.resolve()),
-                "projectionDir": list(direction),
-                "png_backend": png_backend,
+                'name': name,
+                'role': role,
+                'png': str(png_path.resolve()) if png_written else '',
+                'svg': str(svg_path.resolve()),
+                'projectionDir': list(direction),
+                'png_backend': png_backend,
             }
         )
+
+    pending = [Path(r['svg']) for r in results if not r.get('png')]
+    if pending:
+        shot = _rasterize_svgs_browser(pending)
+        converted = {item.get('svg'): item.get('png') for item in (shot.get('converted') or [])}
+        for rec in results:
+            if rec.get('png'):
+                continue
+            png = converted.get(rec['svg'])
+            if png and Path(str(png)).is_file():
+                rec['png'] = str(Path(str(png)).resolve())
+                rec['png_backend'] = 'playwright'
     return results
 
 
@@ -350,37 +308,28 @@ def build_figure_plan_seed(
     schema_ref: str = "structure_schema.yaml",
     patent_type: str = "utility_model",
 ) -> dict[str, Any]:
-    """预填 assembly + alternate_view 的 figure_plan 草稿（供 Agent 审改后定稿）。"""
+    """CAD views are material only: kind=cad, never disclosure lineart."""
     figures: list[dict[str, Any]] = []
-    iso_fig: int | None = None
-    fig_no = 0
     for rec in view_records:
-        fig_no += 1
-        role = rec.get("role") or ("assembly" if rec["name"] == "iso" else "ortho")
-        relates: list[dict[str, Any]] = []
-        if role != "assembly" and iso_fig is not None:
-            relates.append(
-                {
-                    "fig": iso_fig,
-                    "relation": "alternate_view",
-                    "note": f"与图{iso_fig}同模型另一投影（STEP 自动）",
-                }
-            )
-        entry = {
-            "fig": fig_no,
-            "role": role if role in {"assembly", "ortho", "perspective", "detail"} else "ortho",
-            "path": rec["png"],
-            "covers": [],
-            "kind": "cad",
-            "score": 92 if role == "assembly" else 80,
-            "use_in_disclosure": True,
-            "reason": f"STEP 自动视图 {rec['name']}",
-            "relates_to": relates,
-        }
-        if role == "assembly" and iso_fig is None:
-            iso_fig = fig_no
-            entry["role"] = "assembly"
-        figures.append(entry)
+        figures.append(
+            {
+                "fig": None,
+                "role": "reference",
+                "path": rec.get("png") or rec.get("svg") or "",
+                "covers": [],
+                "kind": "cad",
+                "relevance": 0,
+                "quality": 0,
+                "score": 0,
+                "use_in_disclosure": False,
+                "reason": (
+                    f"STEP view {rec.get('name')}: CAD projection is material only; "
+                    "not lineart; never embed in disclosure."
+                ),
+                "relates_to": [],
+                "cad_view": rec.get("name") or "",
+            }
+        )
 
     plan = {
         "$schema": "figure_plan",
@@ -391,7 +340,8 @@ def build_figure_plan_seed(
         "updated_at": datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds"),
         "figures": figures,
         "notes": [
-            "本文件由 step_to_views.py 生成，属草稿；填 StructureSchema 后请重评 covers / score / 入文选择。",
+            "本文件由 step_to_views.py 生成，属草稿。CAD 投影不得入文、不得当线稿。",
+            "填表后须识图重评 relevance / quality / score；分数够才可作图生图参考。",
             "局部细节图需另增材料或人工指定 crop；自动视图仅含投影。",
         ],
     }
@@ -543,7 +493,7 @@ def main(argv: list[str] | None = None) -> int:
                         "STEP 解析默认关闭。请经用户确认后使用 --enable-step-parse，"
                         f"或设置 {ENABLE_ENV}=1。"
                     ),
-                    "install": "pip install -r tools/shared/requirements-step.txt",
+                    "install": "python tools/shared/run_step_to_views.py --enable-step-parse -i <file.step> -o <outdir>",
                 },
                 ensure_ascii=False,
                 indent=2,
@@ -564,7 +514,7 @@ def main(argv: list[str] | None = None) -> int:
             write_structure_seed=not args.no_structure_seed,
             theme_summary=args.theme,
         )
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         print(json.dumps({"error": type(e).__name__, "message": str(e)}, ensure_ascii=False), file=sys.stderr)
         return 1
 

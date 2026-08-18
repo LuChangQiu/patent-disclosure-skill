@@ -10,13 +10,15 @@
 
 ## 视图清单示例
 
-原材料路径仅供识图；**交底入文**以 `figure_plan.yaml` 为准（场景图默认 `use_in_disclosure: false` 或 `role: reference`）。
+原材料路径仅供识图；**交底入文**以 `figure_plan.yaml` 为准。干净实拍与线稿都入文（md + Word）；场景图默认 `use_in_disclosure: false` 或 `role: reference`。CAD 不入文。
 
 | fig | role | 示例 path | kind | 入文？ | relates_to（示意） |
 |-----|------|-----------|------|--------|-------------------|
-| 1 | perspective | `assets/view_perspective.jpg`（裁产品区更佳） | photo_clean | 是 | — |
-| 2 | ortho | `assets/views_ortho.jpg` | photo_clean | 是 | `alternate_view` → 1 |
-| 3 | detail | `assets/view_arm_detail.jpg` | photo_clean | 是 | `detail_of` → 1 |
+| 1 | perspective | `assets/view_perspective.jpg`（裁产品区更佳） | photo_clean | 是 | `same_state` → 2 |
+| 2 | perspective | `lineart_assist/view_perspective_lineart.png` | lineart | 是 | `same_state` → 1 |
+| 3 | ortho | `assets/views_ortho.jpg` | photo_clean | 是 | `alternate_view` → 1 |
+| 4 | ortho | `lineart_assist/view_ortho_lineart.png` | lineart | 是 | `same_state` → 3 |
+| 5 | detail | `assets/view_arm_detail.jpg` | photo_clean | 是 | `detail_of` → 1 |
 | — | reference | `assets/mi_desk_lamp_pro.jpg` 等重场景 | photo_scene | 否 | 可不写 |
 
 正式申请常需标准六视图；教学演练可用实拍多视角 + AppearanceSchema `uncertain` 标明所缺正投影。多视联读关系写入 `figure_plan.relates_to`。

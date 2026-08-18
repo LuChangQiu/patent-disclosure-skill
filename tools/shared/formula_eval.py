@@ -237,7 +237,7 @@ def eval_rhs(rhs_latex: str, values: dict[str, float]) -> tuple[float | None, st
         return None, "skip: 含不允许的运算（仅 + - * / min max）"
     try:
         val = eval(compile(tree, "<formula>", "eval"), {"__builtins__": {}}, {"min": min, "max": max})
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return None, f"skip: 求值失败 ({exc})"
     if not isinstance(val, (int, float)) or not math.isfinite(float(val)):
         return None, "skip: 结果非有限数"

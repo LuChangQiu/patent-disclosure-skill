@@ -24,8 +24,8 @@
 请按 patent-disclosure-skill 交底书流程执行：
 - 专利类型：外观设计
 - 项目扫描目录：examples/example_design_desk_lamp/knowledge/
-- 先 Read prompts/shared/fill_appearance_schema.md 填 AppearanceSchema，并写出 figure_plan.yaml（场景图默认不入文；入文多视补 relates_to）
-- 可选：反问是否开启外观辅助线稿（默认否；我回 **是** / **否**）。若是，按 design_lineart_assist.md（须参考图，禁止纯文生图）
+- 先 Read prompts/shared/fill_appearance_schema.md 填 AppearanceSchema，并写出 figure_plan.yaml（识图打分；干净实拍+线稿都入文，写入 md 与 Word；CAD 不入文；入文多视补 relates_to）
+- 成文前线稿必做（不问我）：Read image_gen.md + design_lineart_assist.md；已有合格线稿则入文，否则图生图或文生图
 - 再按 prompts/disclosure/design/ 成文（只嵌 figure_plan 入文图）
 - 查新：cnipa_epub_search.py --type design …
 ```

@@ -54,7 +54,7 @@
 - [ ] **迭代路径**：若本次走 `merger.md` / `correction_handler.md`，对话中是否已含 **`## 合并摘要（留档）`** 或 **`## 纠正摘要（留档）`**（按该 prompt 字数要求）
 - [ ] **修订对话记录**：案件目录是否已追加 **`交底书修订对话记录.md`** 一条（含记录时间、用户说明摘要、本轮交付文件名、摘要摘录），见 **`iteration_context.md`**
 - [ ] **交付文件名**：凡落盘交付的交底书是否均为 **`{案件名}_{YYYYMMDDHHmmss}.md`** 及同名 `.docx`（§7.3 第 5 点，**含首次定稿与迭代**），未无故覆盖旧稿
-- [ ] **图示（按类型）**：发明须 fenced mermaid → `tools/shared/mermaid_render.py` 转 PNG，无 ASCII 框图；实用新型/外观以 **`figure_plan.yaml`** 入文图为主（实用优先线稿/CAD；外观实拍/线稿均可），正文「如图/见图 N」与清单 `fig` 一致。`.md` 已交付；发明须 `.docx`（或已提示 `md_to_docx.py`）；实用建议 docx；外观 docx 可选
+- [ ] **图示（按类型）**：发明须 fenced mermaid → `tools/shared/mermaid_render.py` 转 PNG，无 ASCII 框图；实用新型以 **`figure_plan.yaml`** 入文线稿为主（CAD/实拍不入文）；外观 **实拍 + 线稿** 均入 md 与 Word。正文「如图/见图 N」与清单 `fig` 一致。`.md` 已交付；发明须 `.docx`；实用建议 docx；外观须同名 `.docx`
 - [ ] **figure_plan（实用/外观）**：案件目录存在 `figure_plan.yaml`（或 json）；主题/材料若本轮有变，清单已重评（含 `relates_to`）；未入文图有 `reason`；总装+局部或入文多视时图际关联已填写
 - [ ] 章节引用：如「详见 3.4.1」须指向真实存在的章节
 - [ ] **1.1 / 在先对比**：列举的专利/文献/在先外观是否均附有**可访问且与著录项一致**的公开 URL（非编造）；是否与 `prior_art_search.md` 及检索说明自洽；**检索说明**是否**未**出现 `cnipa_epub_search.py`、WebSearch/降级等内部流程用语
@@ -65,6 +65,7 @@
 - [ ] **权利要求偏向点（对话，发明）**：定稿对话是否按发明 **`disclosure_builder.md` §7.6** 给可选建议（**仅对话**）；侧重点源于本稿，**无**凭空捏造
 - [ ] **公式 PNG（对话，发明）**：stderr 若有 `omml_text_fallback` 或 `OMML_FAIL:`，交付后是否已反问是否装 matplotlib 并以 `--math-render` 重出 Word；未得「是」则未安装
 - [ ] **政策感知低频提示（对话，可选）**：若适用，是否已按 **`prompts/evolution/soft_nudge.md`** 决定提示或跳过（**至多一句**；未写入正文；未因此自动跑模式 C）
+- [ ] **STEP 解析（对话）**：cad_scan 为 `ask_enable_step_parse` 时，是否已在交底落盘后的交付回复末尾反问；未在 Step 2 中断成文；未得「是」则未安装依赖。仅原生 CAD 则交付末尾已提示导出 STEP
 
 ## 8.4 实用新型专项
 
@@ -74,8 +75,8 @@
 - [ ] 未把外观美感或算法步骤当作构造创新主线
 - [ ] 附图「如图 N」与 `figure_plan` 的 `fig`/`path` 一致（非散落 assets 临场挑选）
 - [ ] 总装+局部入文时 `relates_to` 已写；正文「局部/剖视」表述与之对齐；跨图件号一致
-- [ ] 入文图优先 lineart/cad；场景图未误入正文（除非清单明确启用）
-- [ ] 若本轮开启结构辅助线稿：存在 `structure_lineart_brief`、源图路径有效、未纯文生图；件号与 `structure_schema.parts` 一致；figure_plan 辅助条 `reason` 已标明非申报终稿；未误用 `design_lineart_*`
+- [ ] 入文图仅为合格 lineart；CAD/实拍未误入正文  
+- [ ] 结构线稿已走 image_gen：存在 `structure_lineart_brief`（或已有合格线稿故跳过生成）；件号与 `structure_schema.parts` 一致；已叠标后读图核对引出线落点（非仅 overlay 脚本合法）；未误用 `design_lineart_*`
 
 ## 8.5 外观设计专项
 
@@ -83,7 +84,7 @@
 - [ ] 设计要点可追溯 AppearanceSchema；只写可见造型/图案/色彩
 - [ ] 视图清单齐全或 `uncertain` 已标明缺失；入文视图与 `figure_plan` 一致
 - [ ] 入文多视/局部的 `relates_to` 已写（或可说明无需关联）；跨图造型无矛盾
-- [ ] 若本轮开启辅助线稿：存在 `design_lineart_brief`、源图路径有效、未纯文生图；figure_plan 辅助条 `reason` 已标明非申报终稿
+- [ ] 外观线稿已走 image_gen：存在 `design_lineart_brief`（或已有合格线稿故跳过生成）；干净实拍与线稿均已入 md 与 Word；CAD 未入文；实拍未标成 `kind: lineart`
 - [ ] `not_design_signals` 已处理（反问改类型或已从要点删除）
 - [ ] 未写内部电路、受力、工艺作为设计要点
 

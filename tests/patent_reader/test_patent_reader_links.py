@@ -10,7 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools" / "patent_reader"))
 
-from vault.patent_link import discover_links, load_patent_notes, run_link_pipeline  # noqa: E402
+from vault.patent_link import discover_links, load_patent_notes, run_link_pipeline
 
 
 def _note(pub: str, domain: str, ipc: str, assignees: list[str], terms: list[str], extra: str = "") -> str:

@@ -35,8 +35,8 @@ for p in (_CRAWL, _SHARED):
     if s not in sys.path:
         sys.path.insert(0, s)
 
-from patent_type import TYPE_ALL, normalize_patent_type  # noqa: E402
-from stdio_utf8 import ensure_utf8_stdio  # noqa: E402
+from patent_type import TYPE_ALL, normalize_patent_type
+from stdio_utf8 import ensure_utf8_stdio
 
 _MAX_TERMS = 8
 
@@ -119,7 +119,7 @@ def main(argv: list[str] | None = None) -> int:
     os.environ.setdefault("EPUB_WAF_MAX_WAIT_SEC", "180")
 
     try:
-        import playwright  # noqa: F401
+        import playwright
     except ImportError:
         print(
             "ERROR: pip install playwright  (or: pip install -r requirements.txt)",

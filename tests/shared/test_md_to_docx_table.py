@@ -8,7 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools" / "shared"))
 
-from md_to_docx import _parse_table_row  # noqa: E402
+from md_to_docx import _parse_table_row
 
 
 class MdToDocxTableTests(unittest.TestCase):

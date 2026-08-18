@@ -34,7 +34,7 @@
 
 ## CAD / STEP（可选，默认关闭）
 
-**开关**：STEP 多视角解析 **默认关闭**。仅当用户回复 **是**（或明确肯定）后，才可延迟安装依赖并转换；回复 **否** 则跳过解析。
+**开关**：STEP 多视角解析 **默认关闭**。Step 2 **只分类、不中断**挖点/成文。交底 md+docx **落盘之后**再反问；仅当用户回复 **是** 后才装依赖并转换。回复 **否** 则跳过解析。用户在成文前**主动要求**开启的除外。
 
 **分类扫描（轻量，无重依赖）**：在扫描根（含 `knowledge/`、用户 @ 的目录等）执行：
 
@@ -48,43 +48,57 @@ python ${CLAUDE_SKILL_DIR}/tools/shared/cad_scan.py -r "<扫描根>" --json
 
 | `action` | 行为 |
 |----------|------|
-| `ask_enable_step_parse` | **立即中断**后续挖点/成文；展示 `step_files`，反问是否开启（请用户回 **是** / **否**）。未得 **是** 前禁止装依赖与 `step_to_views.py`。 |
-| `hint_export_step` | **不中断**扫描（继续 Office/文档/图片流程）；在**本轮对话回复末尾**提示：可将原生 CAD 导出为 `.step`/`.stp` 后再开启解析（文案可用 JSON `messages.hint_export_step`）。 |
+| `ask_enable_step_parse` | **不中断**后续挖点/成文。记下 `step_files`，成文只用已有图片/文档。**交底落盘后**在交付回复末尾用 `messages.ask_enable_step_parse` 反问（请回 **是** / **否**）。未得 **是** 前禁止装依赖与 `step_to_views.py`。 |
+| `hint_export_step` | **不中断**扫描（继续 Office/文档/图片流程）；在**交付回复末尾**提示：可将原生 CAD 导出为 `.step`/`.stp` 后再开启解析（文案可用 JSON `messages.hint_export_step`）。 |
 | `none` | 无 CAD 相关文件，忽略。 |
 
-**用户回复「是」后**：
+**用户在交付后回复「是」后**（或成文前主动要求开启后）：
+
+先探测隔离环境（**不要每次安装**）。JSON 的 `ok` 为 true 则跳过 bootstrap：
 
 ```bash
-pip install -r ${CLAUDE_SKILL_DIR}/tools/shared/requirements-step.txt
-python ${CLAUDE_SKILL_DIR}/tools/shared/step_to_views.py --check-deps
-python ${CLAUDE_SKILL_DIR}/tools/shared/step_to_views.py --enable-step-parse \
+python ${CLAUDE_SKILL_DIR}/tools/shared/cad_venv.py
+```
+
+若 `ok` 不为 true：先向用户说明「正在配置本地 CAD 环境（隔离 `cad-env`，Python 3.10–3.12，耗时较久）」，再执行：
+
+```bash
+python ${CLAUDE_SKILL_DIR}/tools/shared/bootstrap_cad_venv.py
+```
+
+然后出图（CadQuery 在 `tools/shared/cad-env`；PNG：**Cairo 或** Playwright 截 SVG，两条路都不用 matplotlib）：
+
+```bash
+python ${CLAUDE_SKILL_DIR}/tools/shared/run_step_to_views.py --enable-step-parse \
   -i "<path/to/model.step>" -o "outputs/{案件标识}/cad_views"
 ```
 
-- 产出：`views/*.png`（iso/front/top/right）、`assembly_tree.yaml`、`structure_schema.seed.yaml`、`figure_plan.seed.yaml`。  
-- 随后按 `prompts/shared/fill_structure_schema.md`：**审改** seed → 定稿 `structure_schema.yaml` + `figure_plan.yaml`（自动视图已预填 `assembly` + `alternate_view` 的 `relates_to`；仍须补 `covers` / 主题 / 局部图）。  
+- **禁止**把 CadQuery 装进主环境 / 3.13。本机已是 3.11 或 3.12 时用当前解释器建 venv，**不要**强行再装 3.10。
+- 产出：`views/*.svg`（必有）；`views/*.png`（有 Cairo 或浏览器时）；`assembly_tree.yaml`、`structure_schema.seed.yaml`、`figure_plan.seed.yaml`。无 PNG 时 figure_plan 用 SVG。  
+- `figure_plan.seed.yaml` 里 CAD 条为 `kind: cad`、`use_in_disclosure: false`、`role: reference`：**不是线稿，不得入文**。  
+- 随后按 `fill_structure_schema.md` 审改 seed：识图重评 `relevance` / `quality` / `score`，CAD 条保持不入文。再跑 `image_gen.py`：有合格线稿才跳过生成，否则以高分 CAD/实拍为参考图生图，或文生图。另存新时间戳交底稿。  
 - **禁止**无 `--enable-step-parse`（且无环境变量 `PATENT_SKILL_STEP_PARSE=1`）时强行转换。  
-- 用户回复 **否**：记录决定，继续仅用已有图片/文档；可在回复末尾保留「日后可导出 STEP 再开」一句。
+- 用户回复 **否**：记录决定，保留已交付稿；可在回复末尾保留「日后可再开 STEP 解析」一句。
 
 **后缀**：`.step`/`.stp` 为可解析目标；原生 CAD（`.sldprt`/`.sldasm`/`.ipt`/`.iam`/`.prt`/`.asm`/`.catpart`/…）见 `tools/shared/cad_formats.py`，**本技能不直接解析**。
 
-## 外观辅助线稿（可选，默认关闭）
+## 外观线稿（必做）
 
-仅**外观设计**且材料中**已有产品图**时适用。细则：`prompts/shared/design_lineart_assist.md`。
+仅**外观设计**。细则：`prompts/shared/image_gen.md` + `prompts/shared/design_lineart_assist.md`。
 
-- **默认关**；可反问是否开启（**是** / **否**）。文案：`python tools/shared/design_lineart_gate.py --print-confirm`。
-- 用户 **是**：先填 Appearance + figure_plan → 写 `design_lineart_brief.yaml`（读 YAML + 多视 `relates_to`）→ `design_lineart_gate.py --enable-design-lineart --prepare-jobs` → **带参考图**出线稿。
-- **无图**或用户未确认：**禁止**生成线稿；**禁止**纯文生图。
-- 辅助线稿默认不入交底正文（`use_in_disclosure: false`）。
+- **默认开**；**不问用户**。填 Appearance + figure_plan 后跑 `image_gen.py`，再写 brief / 出门禁 / 生成或选用线稿。  
+- 线稿只有两条路：材料已有合格 `kind: lineart`，或大模型生成（图生图 → 失败则先描述再文生图）。  
+- 干净实拍 **和** 线稿都写入交底 Markdown 与 Word。实拍不得标成线稿。CAD 不入文。  
+- 仅用户明确不要线稿或 `PATENT_SKILL_SKIP_LINEART=1` 才跳过。
 
-## 实用新型结构辅助线稿（可选，默认关闭）
+## 实用新型结构线稿（必做）
 
-仅**实用新型**且材料中**已有结构相关图**时适用。细则：`prompts/shared/structure_lineart_assist.md`。
+仅**实用新型**。细则：`prompts/shared/image_gen.md` + `prompts/shared/structure_lineart_assist.md`。
 
-- **默认关**；可反问是否开启（**是** / **否**）。文案：`python tools/shared/structure_lineart_gate.py --print-confirm`。
-- 用户 **是**：先填 Structure + figure_plan → 写 `structure_lineart_brief.yaml`（件号对齐 `parts`）→ `structure_lineart_gate.py --enable-structure-lineart --prepare-jobs` → **带参考图**出轮廓；序号层推荐 **overlay**（按部件表叠引出线，禁止自创件号）。
-- **无图**或用户未确认：**禁止**；**禁止**纯文生图。勿与 `design_lineart_*` 混用。
-- 辅助线稿默认不入交底正文（`use_in_disclosure: false`）。
+- **默认开**；**不问用户**。填 Structure + figure_plan 后跑 `image_gen.py`。  
+- CAD 投影 **不是**线稿、**不得**入文；分数够才可能作图生图参考。  
+- 序号层推荐 **overlay**（按部件表叠引出线，禁止自创件号）。勿与 `design_lineart_*` 混用。  
+- 仅用户明确不要线稿或 `PATENT_SKILL_SKIP_LINEART=1` 才跳过。
 
 ## Office 文档（.docx / .pptx）：必先转换再读
 
@@ -132,13 +146,14 @@ Agent **不得**因「只能舒适读取文本」而**遗漏**项目内的 Word 
 | `docs/sample_scheduler_deck.pptx` | **先** `tools/shared/pptx_to_md.py` → 再 Read 生成的 `.md` |
 | `docs/sample_assets/*.png` | **跳过**单独精读（内容已由 Office 内嵌图 + 转换 MD 覆盖） |
 
-### 实用新型 · `examples/example_utility_model_snap_heatsink/knowledge/`
+### 实用新型 · `examples/example_utility_model_ev_powertrain/knowledge/`
 
 | 路径 | 动作 |
 |------|------|
-| `docs/structure_brief.md` | Read |
-| `assets/*.png` | **须**识图填 StructureSchema + **`figure_plan.yaml`**（教学用；勿依赖预填 yaml；优先线稿/结构图入文） |
-| `cad/demo_snap_plate.step` | **cad_scan** → `ask_enable_step_parse`（默认关；确认后才 `step_to_views`；教学几何非真实产品） |
+| `docs/structure_brief.md` | Read（主材料；部件表与建议剖视/爆炸/局部） |
+| `assets/*.jpg` | 展台实拍，**须**识图打分；`kind` 为 `photo_clean` / `photo_scene`，**不入文**；本案例无合格线稿，成文前按 brief **文生图** |
+
+教学用 STEP 不在本示例：见 `tests/fixtures/cad/demo_snap_plate.step`（`cad_scan` / `gen_demo_snap_step.py`）。
 
 ### 外观 · `examples/example_design_desk_lamp/knowledge/`
 

@@ -5,7 +5,7 @@
 | 路径 | 类型 | 说明 |
 |------|------|------|
 | `example_batch_job_scheduler/` | **发明**交底 | 虚构「批任务调度」；`knowledge/` 供 Step 2 扫描 |
-| `example_utility_model_snap_heatsink/` | **实用新型**交底 | 卡扣散热结构教学 brief；真实专利附图 + 教学用 `knowledge/cad/*.step`（测 STEP 反问/解析） |
+| `example_utility_model_ev_powertrain/` | **实用新型**交底 | 集成式电驱桥壳体教学 brief；展台实拍作参考；**文生图**出结构线稿 |
 | `example_design_desk_lamp/` | **外观设计**交底 | 折臂台灯教学 brief；国内媒体实拍 + README 下载链接 |
 | `example_patent_reader/` | **解读** | README 内 CDN / `fetch_patent_pdf` 下载链接；PDF 本地自备（gitignore） |
 | `example_oa_response/` | **审查答复（模式 D）** | 2 篇历史案例 md + 1 篇待答复通知书；测入库/标签检索/答复草稿 |
@@ -16,16 +16,16 @@
 
 ## 实用新型交底演练
 
-见 [example_utility_model_snap_heatsink/README.md](example_utility_model_snap_heatsink/README.md)。
+见 [example_utility_model_ev_powertrain/README.md](example_utility_model_ev_powertrain/README.md)。
 
-要点：intake 指定「实用新型」→ 填 StructureSchema + **`figure_plan.yaml`** → `prompts/disclosure/utility_model/` 成文（只嵌清单入文图）→ 查新 `--type utility_model`。  
-可选：`cad_scan.py` 应发现 `knowledge/cad/demo_snap_plate.step` 并反问是否开启 STEP 解析（默认关）。
+要点：intake 指定「实用新型」→ 填 StructureSchema + **`figure_plan.yaml`**（实拍不入文）→ 按 brief **文生图**线稿（`image_gen.md`）→ `prompts/disclosure/utility_model/` 成文（只嵌合格线稿）→ 查新 `--type utility_model`。  
+STEP 扫描夹具在 `tests/fixtures/cad/demo_snap_plate.step`，与本示例无关。
 
 ## 外观设计交底演练
 
 见 [example_design_desk_lamp/README.md](example_design_desk_lamp/README.md)。
 
-要点：指定「外观设计」→ AppearanceSchema + **`figure_plan.yaml`** → `prompts/disclosure/design/` → 查新 `--type design`。
+要点：指定「外观设计」→ AppearanceSchema + **`figure_plan.yaml`** → 线稿必做 → 成文时 **实拍与线稿都写入 md 和 Word** → 查新 `--type design`。
 
 ## 专利解读（含实用 / 外观 PDF）
 

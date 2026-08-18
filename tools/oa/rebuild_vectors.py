@@ -15,16 +15,16 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from tools.oa.case_md import chunk_case, parse_case_markdown  # noqa: E402
-from tools.oa.config import (  # noqa: E402
+from tools.oa.case_md import chunk_case, parse_case_markdown
+from tools.oa.config import (
     check_rebuild_needed,
     is_vector_enabled,
     load_config,
     mark_fingerprint_built,
     set_vector_enabled,
 )
-from tools.oa.embed import EmbedError, Embedder  # noqa: E402
-from tools.oa.store import list_case_note_paths, open_store, upsert_case  # noqa: E402
+from tools.oa.embed import EmbedError, Embedder
+from tools.oa.store import list_case_note_paths, open_store, upsert_case
 
 
 def resolve_scan_dirs(cfg: dict, vault: str | None) -> list[Path]:
@@ -129,7 +129,7 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"FAIL embed {path}: {exc}", file=sys.stderr)
                 # 向量整体失败则中止，避免半截索引
                 break
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 failed.append({"path": str(path), "error": str(exc)})
                 print(f"FAIL {path}: {exc}", file=sys.stderr)
     finally:

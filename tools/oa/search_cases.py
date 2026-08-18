@@ -11,10 +11,10 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from tools.oa.config import check_rebuild_needed, is_vector_enabled, load_config  # noqa: E402
-from tools.oa.embed import EmbedError, Embedder  # noqa: E402
-from tools.oa.pdf_text import read_document, write_extract  # noqa: E402
-from tools.oa.store import open_store, search  # noqa: E402
+from tools.oa.config import check_rebuild_needed, is_vector_enabled, load_config
+from tools.oa.embed import EmbedError, Embedder
+from tools.oa.pdf_text import read_document, write_extract
+from tools.oa.store import open_store, search
 
 _DEFAULT_QUERY_CHARS = 6000
 
@@ -144,7 +144,7 @@ def main(argv: list[str] | None = None) -> int:
                 mode = "tags_fallback"
                 embed_error = str(exc)
                 vec = None
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 mode = "tags_fallback"
                 embed_error = str(exc)
                 vec = None

@@ -12,15 +12,15 @@ ROOT = Path(__file__).resolve().parents[2]
 SHARED = ROOT / "tools" / "shared"
 sys.path.insert(0, str(SHARED))
 
-from cad_formats import (  # noqa: E402
+from cad_formats import (
     classify_path,
     is_native_cad,
     is_step,
     iter_classified,
     recommend_action,
 )
-from cad_scan import build_report  # noqa: E402
-from step_to_views import build_figure_plan_seed, parse_enabled  # noqa: E402
+from cad_scan import build_report
+from step_to_views import build_figure_plan_seed, parse_enabled
 
 
 class TestCadFormats(unittest.TestCase):
@@ -77,10 +77,12 @@ class TestFigurePlanSeed(unittest.TestCase):
                 out_path=out,
                 theme_summary="test",
             )
-            self.assertEqual(plan["figures"][0]["role"], "assembly")
+            self.assertEqual(plan["figures"][0]["role"], "reference")
             self.assertEqual(plan["figures"][0]["kind"], "cad")
-            self.assertEqual(plan["figures"][1]["relates_to"][0]["relation"], "alternate_view")
-            self.assertEqual(plan["figures"][1]["relates_to"][0]["fig"], 1)
+            self.assertFalse(plan["figures"][0]["use_in_disclosure"])
+            self.assertIsNone(plan["figures"][0]["fig"])
+            self.assertEqual(plan["figures"][0]["relates_to"], [])
+            self.assertTrue(all(not f["use_in_disclosure"] for f in plan["figures"]))
             self.assertTrue(out.is_file())
 
     def test_parse_enabled_default_off(self):
@@ -101,15 +103,14 @@ class TestDemoStepInExample(unittest.TestCase):
     def test_example_step_triggers_ask(self):
         demo = (
             ROOT
-            / "examples"
-            / "example_utility_model_snap_heatsink"
-            / "knowledge"
+            / "tests"
+            / "fixtures"
             / "cad"
             / "demo_snap_plate.step"
         )
         self.assertTrue(demo.is_file(), "missing demo STEP; run gen_demo_snap_step.py")
         self.assertIn("ISO-10303-21", demo.read_text(encoding="utf-8")[:80])
-        report = build_report([str(demo.parent.parent)])
+        report = build_report([str(demo.parent)])
         self.assertEqual(report["action"], "ask_enable_step_parse")
         self.assertTrue(any(p.endswith("demo_snap_plate.step") for p in report["step_files"]))
 

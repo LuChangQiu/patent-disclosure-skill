@@ -19,15 +19,15 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from tools.shared.formula_chem import check_chemistry, latex_looks_chemical  # noqa: E402
-from tools.shared.formula_eval import eval_equation  # noqa: E402
-from tools.shared.formula_paradigms import (  # noqa: E402
+from tools.shared.formula_chem import check_chemistry, latex_looks_chemical
+from tools.shared.formula_eval import eval_equation
+from tools.shared.formula_paradigms import (
     combo_by_id,
     load_paradigms,
     paradigm_by_id,
 )
-from tools.shared.formula_units import check_additive_units, check_score_weights  # noqa: E402
-from tools.shared.stdio_utf8 import ensure_utf8_stdio  # noqa: E402
+from tools.shared.formula_units import check_additive_units, check_score_weights
+from tools.shared.stdio_utf8 import ensure_utf8_stdio
 
 
 def _load(path: Path) -> dict[str, Any]:

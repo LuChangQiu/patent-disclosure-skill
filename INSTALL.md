@@ -100,38 +100,31 @@ python tools/shared/md_to_docx.py -i 定稿.md -o 定稿.docx --base-dir 定稿�
 
 ## 可选：STEP 多视角解析（默认关闭）
 
-扫描发现 **`.step` / `.stp`** 时，Agent 会**先反问**是否开启；确认前**不安装**下列依赖。仅有 SolidWorks 等原生 CAD、无 STEP 时，只会提示导出中性格式。
+扫描发现 **`.step` / `.stp`** 时，Agent **成文不中断**；交底 md+docx **落盘后再反问**是否开启。确认前**不安装** CadQuery。仅有 SolidWorks 等原生 CAD、无 STEP 时，在交付回复末尾提示导出中性格式。
+
+先探测 `tools/shared/cad-env`（已就绪则**跳过安装**）：
 
 ```bash
-pip install -r tools/shared/requirements-step.txt
-python tools/shared/cad_scan.py -r knowledge --json
-python tools/shared/step_to_views.py --check-deps
-python tools/shared/step_to_views.py --enable-step-parse -i model.step -o outputs/{案件}/cad_views
+python tools/shared/cad_venv.py
+python tools/shared/bootstrap_cad_venv.py
+python tools/shared/run_step_to_views.py --enable-step-parse -i model.step -o outputs/{案件}/cad_views
 ```
+
+CadQuery 只进隔离 venv（Python **3.10–3.12**，本机已是 3.11/3.12 不必再装 3.10）。无系统 Cairo 时保留 SVG，用已有 Playwright 无头浏览器截 PNG。CAD 出图**不使用** matplotlib（matplotlib 只用于发明公式 PNG，见上文）。
 
 与主 `requirements.txt` **独立**。细则见 `prompts/disclosure/project_scan.md`「CAD / STEP」、`tools/README.md`。
 
-## 可选：外观辅助线稿（默认关闭）
+## 外观 / 实用新型线稿（成文前必做）
 
-有产品图的外观案件可反问是否开启；确认前不生成。流程见 `prompts/shared/design_lineart_assist.md`。
-
-```bash
-python tools/shared/design_lineart_gate.py --print-confirm
-python tools/shared/design_lineart_gate.py --enable-design-lineart --case-dir outputs/{案件} --prepare-jobs
-```
-
-**禁止**无参考图纯文生图；产出为交底辅助草稿，非申报终稿。
-
-## 可选：实用新型结构辅助线稿（默认关闭）
-
-有结构图的实用新型案件可反问是否开启；确认前不生成。流程见 `prompts/shared/structure_lineart_assist.md`（件号对齐 StructureSchema；推荐轮廓与序号分层）。
+不问用户。先规划再出图。仅 `PATENT_SKILL_SKIP_LINEART=1` 或用户明确不要线稿才跳过。CAD 投影不是线稿、不得入文。
 
 ```bash
-python tools/shared/structure_lineart_gate.py --print-confirm
-python tools/shared/structure_lineart_gate.py --enable-structure-lineart --case-dir outputs/{案件} --prepare-jobs
+python tools/shared/image_gen.py --case-dir outputs/{案件}
+python tools/shared/design_lineart_gate.py --case-dir outputs/{案件} --prepare-jobs
+python tools/shared/structure_lineart_gate.py --case-dir outputs/{案件} --prepare-jobs
 ```
 
-**禁止**无参考图纯文生图与自创件号；产出为交底辅助草稿，非申报终稿。
+流程见 `prompts/shared/image_gen.md`、`design_lineart_assist.md`、`structure_lineart_assist.md`。结构线稿件号对齐 StructureSchema，推荐 overlay，禁止自创件号。
 
 ## 可选：国知局公布公告站抓取（Step 5 查新优先路径）
 
