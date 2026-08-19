@@ -35,11 +35,12 @@ python ${CLAUDE_SKILL_DIR}/tools/shared/image_gen.py --case-dir "outputs/{案件
 2. 按 `figure_plan.relates_to` 联读多图；件名/造型特征跨图一致。  
 3. **`Write`** `design_lineart_brief.yaml`：  
    - `enabled: true`  
-   - `overall_shape` / `design_points` / `uncertain` 对齐 AppearanceSchema  
+   - `overall_shape` / `product_form` / `claimed_faces` / `design_points` / `uncertain` 对齐 AppearanceSchema  
+   - `views[]` **只含**要点落面对应正投影 + 立体图；**禁止**为 `omitted_views` 或未见背面/底面生图  
    - 途经 2 且有参考图：每个 `views[]` 填存在的 `source_paths`（CAD/实拍均可作参考；实拍另条入文，CAD 不入文）  
    - 途经 2 且无参考图：`source_paths` 可空  
    - `source_figs` / `relates_hint` 抄自 figure_plan  
-   - `gen_prompt`：黑白专利风格线稿、无彩色无棚拍阴影、不发明未见结构、保留可见轮廓与开口/倒角；有参考则「以参考图为准」
+   - `gen_prompt`：黑白外观轮廓线稿、无彩色无棚拍阴影、不发明未见结构、保留可见轮廓与开口/倒角；**禁止**尺寸线、中心线、定位线、件号引出线、工程剖面阴影；有参考则「以参考图为准」
 
 ### 2. 门禁
 
@@ -93,9 +94,10 @@ python ${CLAUDE_SKILL_DIR}/tools/shared/design_lineart_gate.py \
 
 ### 5. 成文纪律
 
-- 正文「见图 N」引用实拍与线稿；**Markdown 与同名 Word 都要嵌这两组图**（`md_to_docx.py`）。  
+- 正文「见图 N」引用实拍与线稿；**Markdown 与同名 Word 都要嵌这两组图**（`md_to_docx.py`）。交底对照 ≠ 申请必须六视。  
 - **禁止**把 CAD 投影或实拍写成线稿。  
 - **禁止**把线稿写成「已按国知局规范绘制的正式视图」。  
+- **禁止**线稿上画尺寸线、中心线、定位线、件号引出线。  
 - `uncertain` 中的特征不得画死成设计要点。
 
 ## 自检（内部）
@@ -104,4 +106,5 @@ python ${CLAUDE_SKILL_DIR}/tools/shared/design_lineart_gate.py \
 - [ ] `existing_lineart` 则未再调生图  
 - [ ] 否则已图生图，或已「先描述再文生图」/ 文生图  
 - [ ] 干净实拍与线稿均为 `use_in_disclosure: true`；md 与 docx 都已嵌入  
-- [ ] 多视参照了 `relates_to` / `relates_hint`  
+- [ ] 多视参照了 `relates_to` / `relates_hint`；线稿视与 `claimed_faces` 一致，未为省略面出图  
+- [ ] 线稿无尺寸线 / 中心线 / 定位线 / 件号引出线  

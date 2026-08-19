@@ -131,7 +131,7 @@ Agent **不得**因「只能舒适读取文本」而**遗漏**项目内的 Word 
 | 类型 | 加扫重点 |
 |------|----------|
 | 实用新型 | 装配图、爆炸图、结构说明、`structure_*.yaml/json`、零件表；再按 `shared/fill_structure_schema.md` 识图填表并写出 **`figure_plan.yaml`** |
-| 外观设计 | 六视/立体图、效果图、色彩说明、`appearance_*.yaml/json`；再按 `shared/fill_appearance_schema.md` 填表并写出 **`figure_plan.yaml`** |
+| 外观设计 | 按要点落面收正投影/立体图（非默认六视）、效果图、色彩说明、`appearance_*.yaml/json`；再按 `shared/fill_appearance_schema.md` 填表并写出 **`figure_plan.yaml`** |
 
 独立结构/外观附图（用户点名或 schema `source_images`）**需要** Read 识图，不适用下方「sample_assets 跳过」惯例。
 

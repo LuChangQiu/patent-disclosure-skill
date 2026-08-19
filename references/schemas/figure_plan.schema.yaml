@@ -44,7 +44,7 @@ figures:
 |------|----------|------|
 | `assembly` | 总装/装配关系 | — |
 | `detail` | 局部（卡扣、缺口等） | 造型局部 |
-| `ortho` | 正交/投影结构图 | 六视中的正投影 |
+| `ortho` | 正交/投影结构图 | 正投影（主/后/左/右/俯/仰等，按要点落面，非默认六视） |
 | `perspective` | 立体结构示意 | 立体图 |
 | `reference` | 仅参考、默认不入正文 | 场景/包装等参考 |
 | `rejected` | 明确不入文 | 同左 |
@@ -89,9 +89,12 @@ figures:
 
 **外观（高→低）**
 
-1. 合格 `lineart` 的立体/正交 **与** 对应 `photo_clean` 实拍 → **都入文**（md + Word）  
+先读 AppearanceSchema：`product_form` → `claimed_faces` → 正投影清单（要点落面；立体宜加立体图；**勿默认六视**）。`omitted_views` 面不入文、不生线稿。
+
+1. 清单内合格 `lineart` 的立体/正投影 **与** 对应 `photo_clean` 实拍 → **都入文**（md + Word）  
 2. `cad`：只打分，作图生图参考，**不入文**  
-3. 重场景、广告包装（`photo_scene`）→ 默认 `reference` 或不入文；缺正式六视时在 AppearanceSchema `uncertain` 标明
+3. 重场景、广告包装（`photo_scene`）→ 默认 `reference` 或不入文  
+4. 要点落面缺源图 → AppearanceSchema `uncertain`；故意省略面只写 `omitted_views`，不要写成「缺六视」
 
 ## 跨图核对（填表强制）
 

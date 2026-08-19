@@ -13,7 +13,7 @@
 1. 注意事项（代理人可读、公开充分）
 2. 一、产品名称与用途
 3. 二、设计要点（形状 / 图案 / 色彩或其结合；对齐 schema.design_points）
-4. 三、视图说明（立体/六视；对齐 schema.views + **仅嵌 figure_plan 入文图**）
+4. 三、视图说明（按 `product_form` + `claimed_faces` 的正投影/立体图；对齐 schema.views + **仅嵌 figure_plan 入文图**；省略面写入简要说明）
 5. 四、与在先外观的主要差异（查新后写；禁止无依据贬低）
 6. 五、其它（可选：使用状态参考图说明；勿写内部结构）
 ```
@@ -36,9 +36,9 @@
 ## 7.3 写作硬性要求
 
 - 只写**看得见的造型/图案/色彩**，不写内部电路、卡扣受力、工艺步骤。  
-- 视图齐全或在 AppearanceSchema `uncertain` 标明缺视图；正文「见图 N」**只引用** `figure_plan` 中 `use_in_disclosure: true` 的条目（按 `fig`），勿临场扫全目录。  
+- 视图与 `claimed_faces` 对齐；故意不交的面用 `omitted_views` 在简要说明写清（相同/对称/无要点），**不要**默认补六视。要点落面缺源图才写入 `uncertain`。正文「见图 N」**只引用** `figure_plan` 中 `use_in_disclosure: true` 的条目（按 `fig`），勿临场扫全目录。  
 - **多视联读**：立体/正交/局部之间用 `relates_to`（`same_state` / `alternate_view` / `detail_of`）；正文说明须与之一致，跨图造型特征勿互相矛盾。  
-- **入文同时嵌干净实拍与合格线稿**（`photo_clean` + `kind: lineart`）。实拍不得标成线稿；CAD 禁止入文。缺正式六视写入 AppearanceSchema `uncertain`。  
+- **入文同时嵌干净实拍与合格线稿**（`photo_clean` + `kind: lineart`）。实拍不得标成线稿；CAD 禁止入文。交底对照用，**不**把交底视图集写成「申请必须六视」。  
 - **线稿（必做）**：成文前已按 `shared/image_gen.md` + `shared/design_lineart_assist.md` 选用或生成；不问用户。  
 - **交付**：`.md` 与同名 `.docx` 均须含上述实拍与线稿。  
 - 查新：`tools/crawl/cnipa_epub_search.py --type design`；每条在先外观须可核验来源。  
@@ -57,6 +57,7 @@
 
 - [ ] 文头为外观设计  
 - [ ] 设计要点可追溯 AppearanceSchema  
+- [ ] 已写 `product_form` / `claimed_faces`；正投影按落面而非默认六视；`omitted_views` 已入简要说明（无则 `[]`）  
 - [ ] 视图仅来自 `figure_plan` 且「见图 N」与 `fig` 对齐；干净实拍与线稿均已入文  
 - [ ] 入文多视/局部的 `relates_to` 已写且正文联读一致（可无场景参考图）  
 - [ ] 线稿经 image_gen + design_lineart_gate；CAD 未入文；实拍未标成 lineart  

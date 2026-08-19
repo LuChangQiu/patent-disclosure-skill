@@ -82,7 +82,7 @@
 
 - [ ] 文头 **专利类型：外观设计**
 - [ ] 设计要点可追溯 AppearanceSchema；只写可见造型/图案/色彩
-- [ ] 视图清单齐全或 `uncertain` 已标明缺失；入文视图与 `figure_plan` 一致
+- [ ] 已判 `product_form` 并按 `claimed_faces` 定正投影（非默认六视）；`omitted_views` 已写或为 `[]`；要点落面缺源图才用 `uncertain`；入文视图与 `figure_plan` 一致
 - [ ] 入文多视/局部的 `relates_to` 已写（或可说明无需关联）；跨图造型无矛盾
 - [ ] 外观线稿已走 image_gen：存在 `design_lineart_brief`（或已有合格线稿故跳过生成）；干净实拍与线稿均已入 md 与 Word；CAD 未入文；实拍未标成 `kind: lineart`
 - [ ] `not_design_signals` 已处理（反问改类型或已从要点删除）

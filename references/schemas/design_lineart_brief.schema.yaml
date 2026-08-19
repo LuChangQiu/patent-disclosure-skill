@@ -14,14 +14,17 @@ appearance_ref: appearance_schema.yaml
 figure_plan_ref: figure_plan.yaml
 product_name: ""
 overall_shape: ""             # 与 AppearanceSchema 对齐，可略作线稿强调改写
+product_form: solid           # 与 AppearanceSchema 对齐：solid | planar
+claimed_faces: []             # 与 schema 要点落面一致；只为这些面 + 立体图出线稿
 design_points: []             # 须在参考图上可看见；无参考图则来自 schema
 forbid:
   - 内部结构 / 电路 / 受力
   - 品牌 LOGO / 广告文案
   - 无依据的背面或底面臆造
   - 彩色渲染 / 阴影棚拍风
+  - 尺寸线 / 中心线 / 定位线 / 件号引出线 / 工程剖面阴影
 uncertain: []                 # 看不清、不得画死的特征
-views:
+views:                        # 仅 claimed_faces 对应正投影 + 立体图；勿为 omitted_views 生图
   - view_name: 立体图
     source_figs: [1]          # 材料图 fig；可空（文生图）
     source_paths: []          # 参考图路径，可空；CAD/实拍可作参考，不得当入文线稿
@@ -36,7 +39,8 @@ views:
 - `enabled: true`  
 - `appearance_ref`、`figure_plan_ref`  
 - `views`：至少 1 条；`source_paths` **可空**（无参考图则文生图）；若填写则文件须存在  
-- `overall_shape` 或非空 `design_points`
+- `overall_shape` 或非空 `design_points`  
+- `views` 不得包含 AppearanceSchema `omitted_views` 中的面；无依据背面/底面不画
 
 ## 硬禁止
 

@@ -1,7 +1,7 @@
 ---
 name: patent-disclosure-skill
 description: "中国专利技能：专利点挖掘与交底书（发明/实用/外观）编写，通俗解读专利，嗅探政策动向，辅助审查答复。| China patents skill: mine patent points and draft disclosures (invention / utility model / design), plain-language reading, policy sniffing, assisted office-action response."
-version: "3.6.0"
+version: "3.6.1"
 user-invocable: true
 argument-hint: "[可选：项目路径 / 专利号或 PDF / 政策动向嗅探或技能进化 / 审查答复或案例入库]"
 allowed-tools: Read, Write, Edit, Grep, Glob, WebSearch, Bash
@@ -50,7 +50,7 @@ docs/oa/                     # 模式 D：embedding 配置模板种子（运行�
 - **交底书图示**：
   - **发明**：3.2 / 3.4 用 fenced **mermaid** → `tools/shared/mermaid_render.py`（Playwright + 内置 mermaid.js，见 `tools/shared/browser.py`）。
   - **实用新型**：先 `figure_plan.yaml` 排序入文图（**只入合格线稿**；CAD 投影不入文）+ 部件/关系表（见 `utility_model/disclosure_builder.md`）。
-  - **外观**：先 `figure_plan.yaml` 选视图（**干净实拍 + 线稿都入文**，写入 md 与 Word；CAD 不入文）（见 `design/disclosure_builder.md`）。
+  - **外观**：先判立体/平面与要点落面，再写 `figure_plan.yaml` 选正投影（**非默认六视**；**干净实拍 + 线稿都入文**，写入 md 与 Word；CAD 不入文）（见 `design/disclosure_builder.md`）。
 - **STEP / CAD（可选，默认关）**：Step 2 用 `cad_scan.py` 分类；**不中断**挖点/成文。遇 `.step`/`.stp` 记下路径，交底 **落盘后再反问**是否开启解析；用户 **是** 才 `cad_venv.py`（已就绪则跳过安装）/`bootstrap_cad_venv.py` + `run_step_to_views.py --enable-step-parse`。CadQuery 只进 `tools/shared/cad-env`（Python 3.10–3.12，不强制 3.10）。PNG：有 Cairo 用 cairosvg，否则 `svg_screenshot.py` 无头浏览器截 SVG；**禁止为 CAD 安装 matplotlib**（matplotlib 只用于发明公式 PNG）。投影图是**普通材料**（`kind: cad`），**不得**当线稿、**不得**入文；打分后可能作图生图参考。仅有原生 CAD 则交付回复末尾提示导出 STEP。见 `project_scan.md`「CAD / STEP」。
 - **外观线稿（必做）**：填表后 **`Read`** `shared/image_gen.md` + `shared/design_lineart_assist.md`。不问用户。已有合格线稿则入文；否则大模型生成。干净实拍**同时入文**（md + Word），但不得标成线稿。CAD 不入文。仅用户明确不要或 `PATENT_SKILL_SKIP_LINEART=1` 才跳过。
 - **实用结构线稿（必做）**：填表后 **`Read`** `shared/image_gen.md` + `shared/structure_lineart_assist.md`。不问用户。对齐 `structure_schema.parts`；轮廓与序号分层。推荐 overlay：大模型只定位并把归一化锚点持久化到 `structure_callout_anchors.yaml`，再由 `structure_callout_overlay.py` 用 SVG 精确叠标；**叠标后须读图按部件名称核对引出线**（改 YAML 重叠标，最多 2 轮；禁止含件号二次生图或自创件号）。CAD 不得当线稿入文。**勿**与外观 `design_lineart_*` 混用。

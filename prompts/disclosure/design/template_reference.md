@@ -21,7 +21,7 @@
 | 5 | detail | `assets/view_arm_detail.jpg` | photo_clean | 是 | `detail_of` → 1 |
 | — | reference | `assets/mi_desk_lamp_pro.jpg` 等重场景 | photo_scene | 否 | 可不写 |
 
-正式申请常需标准六视图；教学演练可用实拍多视角 + AppearanceSchema `uncertain` 标明所缺正投影。多视联读关系写入 `figure_plan.relates_to`。
+先判立体/平面与要点落面，再定正投影；仅要点涉及六个面才收齐六面。相同/对称/无要点的面写入 `omitted_views` 供简要说明，不要默认六视。要点落面缺源图才用 `uncertain`。多视联读关系写入 `figure_plan.relates_to`。
 
 ## 与在先差异短句示例
 
