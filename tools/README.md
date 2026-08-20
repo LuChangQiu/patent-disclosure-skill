@@ -116,7 +116,7 @@ python tools/shared/structure_callout_overlay.py --case-dir outputs/case --ancho
 
 ## mermaid_render.py — mermaid：图示 → PNG + 定稿 Markdown + **默认生成 Word**
 
-将 fenced **mermaid**（`` ```mermaid`` ``）逐块经 **Playwright + 内置 `vendor/mermaid.min.js`** 渲染为 PNG；输出 `.md` 中**保留** mermaid 围栏源码，并追加 ``<!-- ![图示 n](mermaid_figures/…) -->`` 供 **`md_to_docx.py`** 嵌入 Word（Word **仅**嵌 PNG，不写 mermaid 代码块）。**3.2 系统框图**与 **3.4 流程图**均用 mermaid（`flowchart` / `subgraph` 等），交底书正文**不再**要求单独的文字框图或 PlantUML。
+将 fenced **mermaid**（`` ```mermaid`` ``）逐块经 **Playwright + 内置 `vendor/mermaid.min.js`** 渲染为 PNG；输出 `.md` 中**保留** mermaid 围栏源码，并追加 ``<!-- ![图示 n](mermaid_figures/…) -->`` 供 **`md_to_docx.py`** 嵌入 Word（Word **仅**嵌 PNG，不写 mermaid 代码块）。**3.2 系统框图**与 **3.4 流程图**均用 mermaid（`flowchart` / `subgraph` 等），交底书正文**不再**要求单独的文字框图或 PlantUML。流程图步骤号（`S1` 等）须写在**可见标签**里；脚本会把 `S1[文案]` 补成 `S1["S1 文案"]` 再出图，否则 PNG 上看不到序号。
 
 **生图失败降级**：某一围栏失败时**不中断**——该处**保留**原 `` ```mermaid`` … `` ``` `` 源码；其余块照常出图。仍写出定稿 `.md`，并**照常尝试**生成 Word（未出图块在 Word 中为 **Consolas 代码块**）。无可用浏览器时同样保留围栏，不阻塞 Markdown。
 
@@ -250,7 +250,7 @@ python tools/shared/md_to_docx.py -i a.md -o a.docx --image-max-width-inches 6 -
 | `#`–`######` | Word 标题 1–9 |
 | 段落 | 宋体正文，支持 `**粗体**`、`` `行内代码` ``；**相邻非空行（中间无空行）各自成段**，「（1）…（2）…」会分行显示 |
 | `-` / `*` 列表 | 项目符号列表 |
-| `1.` 列表 | 编号列表 |
+| `1.` 列表 | 编号列表；被标题 / 段落 / 表格 / 分隔线等隔开的新一组从 1 重计（避免跨章串号） |
 | ` ``` ` 围栏 | 等宽代码块 |
 | `\| 表格 \|` | 简单表格（Table Grid）；单元格内 ``\\(...\\)``、``$...$``、``<!-- -->`` 及 ``\\|`` 中的 ``|`` **不会**被当作列分隔符 |
 | `> ` | 左缩进引用 |
@@ -263,6 +263,7 @@ python tools/shared/md_to_docx.py -i a.md -o a.docx --image-max-width-inches 6 -
 ### 版式说明（md_to_docx）
 
 - 不同语言 Word 中「标题 1」显示名可能为「Heading 1」或「标题 1」，样式仍为大纲级别标题，可用导航窗格与目录域。
+- Markdown 里每组 `1.` 列表（被标题、正文、表格、分隔线等隔开）在 Word 中从 1 重计，避免第一章 1–4 之后第二章变成 5–8。
 - 若需所内固定模版（页眉、首页不同），可在本脚本生成后套用单位 `.dotx`，或后续扩展 `python-docx` 打开模版再写入。
 
 ---

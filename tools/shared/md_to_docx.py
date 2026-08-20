@@ -9,6 +9,7 @@
 
 **连续多行正文**（中间无空行、且非列表/标题等）时，**每一行**输出为 Word 中**独立一段**，
 以便「（1）…（2）…」等分条换行；若须在同一段内接排，请写**同一行**内或用 Markdown 空行分隔逻辑段。
+被标题、段落、表格等隔开的 Markdown 有序列表，在 Word 中各自从 1 重计，避免跨章串号。
 
 定稿宜先用同目录 **`mermaid_render.py`** 将 **mermaid** 转为 PNG；**LaTeX 公式**优先经 **`math_to_omml.py`**（``latex2mathml``）写入 **可编辑 Office Math**，失败则留原文。公式 PNG 须 ``--math-render``（可选 ``matplotlib``），且仅在用户确认后安装。
 
@@ -31,6 +32,7 @@ from pathlib import Path
 
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Inches, Pt, RGBColor
 
@@ -734,6 +736,97 @@ def _add_code_block(doc: Document, lines: list[str]):
     run.font.color.rgb = RGBColor(0x20, 0x20, 0x20)
 
 
+def _paragraph_num_id(paragraph) -> int | None:
+    p_pr = paragraph._p.find(qn("w:pPr"))
+    if p_pr is None:
+        return None
+    num_pr = p_pr.find(qn("w:numPr"))
+    if num_pr is None:
+        return None
+    el = num_pr.find(qn("w:numId"))
+    if el is None:
+        return None
+    raw = el.get(qn("w:val"))
+    if raw is None or not str(raw).isdigit():
+        return None
+    return int(raw)
+
+
+def _style_num_id(doc: Document, style_name: str) -> int | None:
+    try:
+        style = doc.styles[style_name]
+    except KeyError:
+        return None
+    p_pr = style._element.find(qn("w:pPr"))
+    if p_pr is None:
+        return None
+    num_pr = p_pr.find(qn("w:numPr"))
+    if num_pr is None:
+        return None
+    el = num_pr.find(qn("w:numId"))
+    if el is None:
+        return None
+    raw = el.get(qn("w:val"))
+    if raw is None or not str(raw).isdigit():
+        return None
+    return int(raw)
+
+
+def _set_paragraph_num_id(paragraph, num_id: int) -> None:
+    p_pr = paragraph._p.get_or_add_pPr()
+    num_pr = p_pr.find(qn("w:numPr"))
+    if num_pr is None:
+        num_pr = OxmlElement("w:numPr")
+        ilvl_el = OxmlElement("w:ilvl")
+        ilvl_el.set(qn("w:val"), "0")
+        num_pr.append(ilvl_el)
+        el = OxmlElement("w:numId")
+        num_pr.append(el)
+        p_pr.append(num_pr)
+    else:
+        el = num_pr.find(qn("w:numId"))
+        if el is None:
+            el = OxmlElement("w:numId")
+            num_pr.append(el)
+    el.set(qn("w:val"), str(num_id))
+
+
+def _new_list_num_id(doc: Document, src_num_id: int) -> int:
+    """克隆一份编号实例，使新一组有序列表从 1 起计。"""
+    numbering_part = getattr(doc.part, "numbering_part", None)
+    if numbering_part is None:
+        return src_num_id
+    numbering_elm = numbering_part._element
+    src = None
+    used = [0]
+    for node in numbering_elm.findall(qn("w:num")):
+        raw = node.get(qn("w:numId"))
+        if raw and str(raw).isdigit():
+            nid = int(raw)
+            used.append(nid)
+            if nid == src_num_id:
+                src = node
+    if src is None:
+        return src_num_id
+    abs_el = src.find(qn("w:abstractNumId"))
+    if abs_el is None:
+        return src_num_id
+    new_id = max(used) + 1
+    new_num = OxmlElement("w:num")
+    new_num.set(qn("w:numId"), str(new_id))
+    new_abs = OxmlElement("w:abstractNumId")
+    new_abs.set(qn("w:val"), abs_el.get(qn("w:val")))
+    new_num.append(new_abs)
+    lvl_ov = OxmlElement("w:lvlOverride")
+    lvl_ov.set(qn("w:ilvl"), "0")
+    start_ov = OxmlElement("w:startOverride")
+    start_ov.set(qn("w:val"), "1")
+    lvl_ov.append(start_ov)
+    new_num.append(lvl_ov)
+    numbering_elm.append(new_num)
+    return new_id
+
+
 def _add_list_item(
     doc: Document,
     text: str,
@@ -761,6 +854,7 @@ def _add_list_item(
         _add_inline_to_paragraph(p, text)
     for run in p.runs:
         _set_run_font(run, "宋体", 10.5)
+    return p
 
 
 def _is_table_row(line: str) -> bool:
@@ -970,11 +1064,26 @@ def convert_md_to_docx(
     lines = md_text.splitlines()
     i = 0
     para_buf: list[str] = []
+    ordered_num_id: int | None = None
+
+    def break_ordered_list() -> None:
+        nonlocal ordered_num_id
+        ordered_num_id = None
+
+    def bind_ordered_paragraph(paragraph) -> None:
+        nonlocal ordered_num_id
+        src = _paragraph_num_id(paragraph) or _style_num_id(doc, "List Number")
+        if src is None:
+            return
+        if ordered_num_id is None:
+            ordered_num_id = _new_list_num_id(doc, src)
+        _set_paragraph_num_id(paragraph, ordered_num_id)
 
     def flush_paragraph():
         nonlocal para_buf
         if not para_buf:
             return
+        break_ordered_list()
         # 每行独立成段，避免「（1）…\n（2）…」被空格拼成一段（Word 内不换行）
         for p in para_buf:
             t = p.strip()
@@ -999,6 +1108,7 @@ def convert_md_to_docx(
         # 围栏代码块
         if line.strip().startswith("```"):
             flush_paragraph()
+            break_ordered_list()
             fence_lang = line.strip()[3:].strip()
             i += 1
             code_lines: list[str] = []
@@ -1022,6 +1132,7 @@ def convert_md_to_docx(
         # 块级公式：\[ ... \] + 可选 HTML 注释（OMML → PNG → 原文）
         if line.strip() == "\\[":
             flush_paragraph()
+            break_ordered_list()
             i += 1
             math_lines: list[str] = []
             while i < len(lines) and lines[i].strip() != "\\]":
@@ -1050,6 +1161,7 @@ def convert_md_to_docx(
         # 块级公式：$$ ... $$ + 可选 HTML 注释（OMML → PNG → 原文）
         if line.strip() == "$$":
             flush_paragraph()
+            break_ordered_list()
             i += 1
             math_lines = []
             while i < len(lines) and lines[i].strip() != "$$":
@@ -1079,6 +1191,7 @@ def convert_md_to_docx(
         strip = line.strip()
         if strip.startswith("$$") and strip.endswith("$$") and len(strip) > 4:
             flush_paragraph()
+            break_ordered_list()
             latex = strip[2:-2].strip()
             i += 1
             hidden = None
@@ -1101,6 +1214,7 @@ def convert_md_to_docx(
         # 独立 HTML 注释行（公式图 / mermaid 框图引用）
         if _HIDDEN_MD_IMAGE_COMMENT_RE.fullmatch(line.strip()):
             flush_paragraph()
+            break_ordered_list()
             _try_embed_hidden_comment_line(
                 doc,
                 line,
@@ -1114,6 +1228,7 @@ def convert_md_to_docx(
         # 图片行或含行内公式/注释的段落
         if _line_has_embeddable_images(line):
             flush_paragraph()
+            break_ordered_list()
             stripped = line.strip()
             if _MD_IMAGE_RE.fullmatch(stripped) or (
                 stripped.startswith("![") and stripped.count("![") == 1
@@ -1139,6 +1254,7 @@ def convert_md_to_docx(
         # 水平线
         if re.match(r"^[\s\-*_]{3,}\s*$", line) and set(line.strip()) <= {"-", "*", "_", " "}:
             flush_paragraph()
+            break_ordered_list()
             _add_horizontal_rule(doc)
             i += 1
             continue
@@ -1147,6 +1263,7 @@ def convert_md_to_docx(
         m = re.match(r"^(#{1,6})\s+(.+)$", line)
         if m:
             flush_paragraph()
+            break_ordered_list()
             level = len(m.group(1))
             title = m.group(2).strip()
             title = re.sub(r"\s+#+\s*$", "", title)
@@ -1157,6 +1274,7 @@ def convert_md_to_docx(
         # 引用
         if line.lstrip().startswith("> "):
             flush_paragraph()
+            break_ordered_list()
             quote = line.lstrip()[2:].strip()
             p = doc.add_paragraph()
             p.paragraph_format.left_indent = Inches(0.25)
@@ -1170,6 +1288,7 @@ def convert_md_to_docx(
         # 表格块
         if _is_table_row(line):
             flush_paragraph()
+            break_ordered_list()
             table_rows: list[list[str]] = []
             while i < len(lines) and _is_table_row(lines[i]):
                 row = _parse_table_row(lines[i])
@@ -1183,6 +1302,7 @@ def convert_md_to_docx(
         um = re.match(r"^(\s*)[-*+]\s+(.+)$", line)
         if um:
             flush_paragraph()
+            break_ordered_list()
             _add_list_item(
                 doc,
                 um.group(2).strip(),
@@ -1197,13 +1317,14 @@ def convert_md_to_docx(
         om = re.match(r"^(\s*)\d+\.\s+(.+)$", line)
         if om:
             flush_paragraph()
-            _add_list_item(
+            p = _add_list_item(
                 doc,
                 om.group(2).strip(),
                 ordered=True,
                 base_dir=base_dir,
                 image_max_h_in=image_max_h_in,
             )
+            bind_ordered_paragraph(p)
             i += 1
             continue
 

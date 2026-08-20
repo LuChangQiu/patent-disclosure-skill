@@ -149,6 +149,68 @@ _MMD_END = re.compile(r"^```\s*$")
 _MERMAID_HIDDEN_COMMENT_RE = re.compile(
     r"<!--\s*!\[([^\]]*)\]\(([^)]+)\)\s*-->"
 )
+_STEP_NODE_RE = re.compile(
+    r"(?P<id>[A-Za-z]+\d+)\s*"
+    r"(?P<lbr>\[|\(|\{)"
+    r"(?:"
+    r'(?P<q>["\'])(?P<qlabel>.*?)(?P=q)'
+    r"|"
+    r"(?P<ulabel>[^\]\)\}]+)"
+    r")"
+    r"(?P<rbr>\]|\)|\})"
+)
+_STEP_SHAPE_PAIR = {"[": "]", "(": ")", "{": "}"}
+
+
+def _label_shows_step_id(label: str, nid: str) -> bool:
+    text = label.strip()
+    if text == nid:
+        return True
+    if text.startswith(nid) and (
+        len(text) == len(nid) or text[len(nid)] in " \u3000:：.-/、"
+    ):
+        return True
+    return False
+
+
+def _quote_mermaid_label(text: str) -> str:
+    if '"' not in text:
+        return f'"{text}"'
+    if "'" not in text:
+        return f"'{text}'"
+    return '"' + text.replace('"', "'") + '"'
+
+
+def ensure_step_ids_in_visible_labels(src: str) -> tuple[str, int]:
+    """把 S1[采集…] 写成 S1["S1 采集…"]，使 PNG 可见步骤号。id 本身不出图。"""
+
+    n_fix = 0
+
+    def repl(match: re.Match[str]) -> str:
+        nonlocal n_fix
+        nid = match.group("id")
+        lbr = match.group("lbr")
+        rbr = match.group("rbr")
+        if _STEP_SHAPE_PAIR.get(lbr) != rbr:
+            return match.group(0)
+        label = match.group("qlabel")
+        if label is None:
+            label = match.group("ulabel") or ""
+        if _label_shows_step_id(label, nid):
+            return match.group(0)
+        n_fix += 1
+        return f"{nid}{lbr}{_quote_mermaid_label(f'{nid} {label.strip()}')}{rbr}"
+
+    out_lines: list[str] = []
+    for raw in src.splitlines(keepends=True):
+        core = raw.rstrip("\r\n")
+        nl = raw[len(core) :]
+        stripped = core.lstrip()
+        if stripped.startswith("%%") or stripped.startswith("subgraph "):
+            out_lines.append(raw)
+            continue
+        out_lines.append(_STEP_NODE_RE.sub(repl, core) + nl)
+    return "".join(out_lines), n_fix
 
 
 def _is_mermaid_figure_comment(alt: str, src: str) -> bool:
@@ -210,24 +272,37 @@ def render_markdown_mermaid(
                 if i < len(lines):
                     i += 1
 
+                joined = "".join(body)
+                fixed, n_fix = ensure_step_ids_in_visible_labels(joined)
+                if n_fix:
+                    print(
+                        f"[mermaid_render] 第 {block_idx + 1} 个围栏：{n_fix} 处步骤号已写入可见标签"
+                        "（S1[文案] → S1[\"S1 文案\"]，否则 PNG 看不到序号）",
+                        file=sys.stderr,
+                    )
+                    if joined.endswith("\n") and not fixed.endswith("\n"):
+                        fixed += "\n"
+                    body = fixed.splitlines(keepends=True)
+
                 j = i
                 while j < len(lines) and lines[j].strip() == "":
                     j += 1
                 if j < len(lines):
                     cm = _MERMAID_HIDDEN_COMMENT_RE.match(lines[j].strip())
                     if cm and _is_mermaid_figure_comment(cm.group(1), cm.group(2)):
-                        out.append(fence_open)
-                        out.extend(body)
-                        if not closing.endswith("\n"):
-                            closing = closing + "\n"
-                        out.append(closing)
-                        while i < j:
+                        if n_fix == 0:
+                            out.append(fence_open)
+                            out.extend(body)
+                            if not closing.endswith("\n"):
+                                closing = closing + "\n"
+                            out.append(closing)
+                            while i < j:
+                                out.append(lines[i])
+                                i += 1
                             out.append(lines[i])
                             i += 1
-                        out.append(lines[i])
-                        i += 1
-                        ok += 1
-                        continue
+                            ok += 1
+                            continue
 
                 block_idx += 1
                 fname = f"fig_{ok + 1:03d}.png"
@@ -256,6 +331,16 @@ def render_markdown_mermaid(
                     closing = closing + "\n"
                 out.append(closing)
                 out.append(f"<!-- ![图示 {ok}]({rel}) -->\n")
+                if n_fix:
+                    k = i
+                    while k < len(lines) and lines[k].strip() == "":
+                        k += 1
+                    if k < len(lines):
+                        cm_old = _MERMAID_HIDDEN_COMMENT_RE.match(lines[k].strip())
+                        if cm_old and _is_mermaid_figure_comment(
+                            cm_old.group(1), cm_old.group(2)
+                        ):
+                            i = k + 1
                 continue
             out.append(line)
             i += 1

@@ -1,7 +1,7 @@
 ---
 name: patent-disclosure-skill
 description: "中国专利技能：专利点挖掘与交底书（发明/实用/外观）编写，通俗解读专利，嗅探政策动向，辅助审查答复。| China patents skill: mine patent points and draft disclosures (invention / utility model / design), plain-language reading, policy sniffing, assisted office-action response."
-version: "3.6.1"
+version: "3.6.2"
 user-invocable: true
 argument-hint: "[可选：项目路径 / 专利号或 PDF / 政策动向嗅探或技能进化 / 审查答复或案例入库]"
 allowed-tools: Read, Write, Edit, Grep, Glob, WebSearch, Bash
@@ -48,7 +48,7 @@ docs/oa/                     # 模式 D：embedding 配置模板种子（运行�
 - **脚本判读（尤其 Windows）**：stderr 有字 **不等于** 失败。以 **退出码 0** 和机读前缀为准：`EPUB_HITS_JSON:` / `EPUB_MERGE:`、`PROBE:` / `BROWSER:`、`MERMAID:` / `DOCX:` / `MATH:` / `omml_text_fallback=`、`CAD_VENV:` / `SVG_HTTP:` / `PIP_INDEX`。PowerShell 可能把 stderr 标成 `NativeCommandError` 或乱码；**禁止**因此重跑安装、或把查新降级 WebSearch。勿用 `2>&1` 把 JSON 混进错误流。
 - **专利类型**：未显式指定时交底**默认发明**；材料更偏实用/外观时在汇总或预览阶段**反问**（见 `disclosure/intake.md`）。
 - **交底书图示**：
-  - **发明**：3.2 / 3.4 用 fenced **mermaid** → `tools/shared/mermaid_render.py`（Playwright + 内置 mermaid.js，见 `tools/shared/browser.py`）。
+  - **发明**：3.2 / 3.4 用 fenced **mermaid** → `tools/shared/mermaid_render.py`（Playwright + 内置 mermaid.js，见 `tools/shared/browser.py`）。流程图步骤号须写入可见标签：`S1["S1 …"]`（id 本身不出图）。成文须让**标题领域对象**贯穿 3.1 / 框图 / 流程 / 实施例；用词贴合话题背景，话题错位的抽象行话换成领域表述（发明 `disclosure_builder.md` §7.9）。
   - **实用新型**：先 `figure_plan.yaml` 排序入文图（**只入合格线稿**；CAD 投影不入文）+ 部件/关系表（见 `utility_model/disclosure_builder.md`）。
   - **外观**：先判立体/平面与要点落面，再写 `figure_plan.yaml` 选正投影（**非默认六视**；**干净实拍 + 线稿都入文**，写入 md 与 Word；CAD 不入文）（见 `design/disclosure_builder.md`）。
 - **STEP / CAD（可选，默认关）**：Step 2 用 `cad_scan.py` 分类；**不中断**挖点/成文。遇 `.step`/`.stp` 记下路径，交底 **落盘后再反问**是否开启解析；用户 **是** 才 `cad_venv.py`（已就绪则跳过安装）/`bootstrap_cad_venv.py` + `run_step_to_views.py --enable-step-parse`。CadQuery 只进 `tools/shared/cad-env`（Python 3.10–3.12，不强制 3.10）。PNG：有 Cairo 用 cairosvg，否则 `svg_screenshot.py` 无头浏览器截 SVG；**禁止为 CAD 安装 matplotlib**（matplotlib 只用于发明公式 PNG）。投影图是**普通材料**（`kind: cad`），**不得**当线稿、**不得**入文；打分后可能作图生图参考。仅有原生 CAD 则交付回复末尾提示导出 STEP。见 `project_scan.md`「CAD / STEP」。
@@ -203,8 +203,8 @@ docs/oa/                     # 模式 D：embedding 配置模板种子（运行�
 
 ## 迭代模式（交底书 · 摘要）
 
-- 补材料 / 扩展：`iteration_context` → `merger` → 新时间戳稿（实用/外观若改图或主题须同步 **`figure_plan`**）  
-- 纠错：`iteration_context` → `correction_handler` → 新时间戳稿（同上）  
+- 补材料 / 扩展：`iteration_context` → `merger` → 新时间戳稿（实用/外观若改图或主题须同步 **`figure_plan`**；术语改叫法则整族替换）  
+- 纠错：`iteration_context` → `correction_handler` → 新时间戳稿（同上；含术语太抽象、标题对象未落地）  
 
 ---
 
@@ -215,6 +215,7 @@ docs/oa/                     # 模式 D：embedding 配置模板种子（运行�
 □ 交底未指定类型时已默认发明；材料偏实用/外观已按需反问
 □ Step 3–4 / Step 7 已 Read 对应类型子目录 md（非发明套用实用/外观）
 □ 查新 cnipa 已带与案件一致的 --type；abstract 必用
+□ 发明成文：3.1 已铺标题对象与领域术语；框图/流程/实施例贯穿标题实词；用词贴合话题背景（错位行话已换成领域表述，非靠定义保留）；3.3 独立模块、3.4 逐项对应 S 步；第五章为可实施机制
 □ 发明含公式：已写 formula_plan（范式∈references/formulas）且可算数值例；禁装饰音；已 check_formula_plan 或等价自检
 □ 实用/外观已走 schema 填表（shared）并写出 figure_plan（含 relevance/quality 与必要 relates_to），未看图直接长文；实用只嵌入文线稿；外观 md+docx 同时嵌实拍与线稿；CAD 未入文
 □ Step 2/补材料已 cad_scan：遇 STEP **未**中断成文、**未**装依赖；交底落盘后才反问；仅原生 CAD 则交付回复末尾提示导出 STEP；未确认不开 step_to_views；确认后先 cad_venv 探测，已就绪则跳过 bootstrap；CAD 投影只当材料
