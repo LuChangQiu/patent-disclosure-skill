@@ -2,6 +2,7 @@
 
 **公共合同先读**：`prompts/shared/image_gen.md`（线稿只有两条路；CAD 不得当线稿、不得入文）  
 **本文件合同**：`references/schemas/structure_lineart_brief.schema.yaml`  
+**按件拼装（轮廓之后）**：`prompts/shared/structure_lineart_compose.md`  
 **前置**：已有或本轮将写出的 `structure_schema.yaml` + `figure_plan.yaml`（见 `fill_structure_schema.md`）  
 **与外观分流**：外观用 `design_lineart_assist.md`；禁止混用。
 
@@ -46,13 +47,14 @@ python ${CLAUDE_SKILL_DIR}/tools/shared/structure_lineart_gate.py \
 缺少 Structure / `visible_part_ids` 不在 `parts` → 拒绝。  
 成功则写出 `lineart_assist/structure_lineart_jobs.json`。
 
-### 3. 出图（轮廓 → 锚点 → 叠标 → 语义自查）
+### 3. 出图（轮廓 → 按件拼装 → 锚点 → 叠标 → 语义自查）
 
 对每一 job：
 
-1. **轮廓层**（`mode` 不是 `existing_lineart` 时）：按 `image_gen.md` 图生图或「先描述再文生图」或文生图，写入 `output_path`。  
-2. **锚点定位**（`callout_mode: overlay`）：大模型读取已经生成的**无号轮廓图**，逐个定位 job `callouts` 对应部件；把归一化 `anchor`、附近留白区 `label`、`confidence` 持久化到案件目录 `structure_callout_anchors.yaml`。合同见 `references/schemas/structure_callout_anchors.schema.yaml`。锚点须落在对应部件轮廓上或紧邻轮廓，序号应围绕结构就近分散，禁止全部排到画布边缘。
-3. **精确叠标**：运行：
+1. **轮廓层**（`mode` 不是 `existing_lineart` 时）：按 `image_gen.md` 图生图或「先描述再文生图」或文生图，写入 `output_path`。已有合格线稿则用原图当本视轮廓。  
+2. **按件拼装（必做）**：**`Read`** `prompts/shared/structure_lineart_compose.md`。按 `parts` 写 `structure_lineart_compose.yaml`（每件一个槽位），跑 `structure_lineart_compose.py`：每件落 `lineart_assist/parts/{视}_{id}.svg`，总图 `*_composed.svg` 相对引用子文件。总装用 `crop`（子文件裁总装 PNG，隔离弱）；爆炸/分件用每件小图 `image`（仅 schema 已分开的可分离件，须先有单件图）。不要把整图 base64+clip 进总 SVG，也不要把一件再拆成筋/齿/螺栓。  
+3. **锚点定位**（`callout_mode: overlay`）：大模型读取**拼装后的图**（优先 composed SVG 的预览，或无号轮廓），逐个定位 job `callouts` 对应部件；把归一化 `anchor`、附近留白区 `label`、`confidence` 持久化到案件目录 `structure_callout_anchors.yaml`。合同见 `references/schemas/structure_callout_anchors.schema.yaml`。该视填写 `base_svg_path` 指向 composed SVG。锚点须落在对应部件轮廓上或紧邻轮廓，序号应围绕结构就近分散，禁止全部排到画布边缘。
+4. **精确叠标**：运行：
 
 ```bash
 python ${CLAUDE_SKILL_DIR}/tools/shared/structure_callout_overlay.py \
@@ -60,9 +62,9 @@ python ${CLAUDE_SKILL_DIR}/tools/shared/structure_callout_overlay.py \
   --anchors "outputs/{案件标识}/structure_callout_anchors.yaml"
 ```
 
-Python 只校验件号合法、坐标 0..1、置信度与 label 间距；**不判断标没标对部件**。结果写入 `output_svg_path`。需要 PNG 时再用 `svg_screenshot.py --svg … --png …`。
+有 `base_svg_path` 时，脚本把件号组**注入**拼装 SVG，不覆盖零件图层。Python 只校验件号合法、坐标 0..1、置信度与 label 间距；**不判断标没标对部件**。结果写入 `output_svg_path`。需要 PNG 时再用 `svg_screenshot.py --svg … --png …`。
 
-4. **叠标后语义自查（必做，最多 2 轮校正）**：Python 通过 ≠ 图面对。须 **`Read` 叠标后的 PNG/SVG**（不要只看无号轮廓），对照本视 `visible_part_ids` + `structure_schema.parts` 的 **id+名称**：
+5. **叠标后语义自查（必做，最多 2 轮校正）**：Python 通过 ≠ 图面对。须 **`Read` 叠标后的 PNG/SVG**（不要只看无号轮廓），对照本视 `visible_part_ids` + `structure_schema.parts` 的 **id+名称**：
 
    | 查什么 | 不合格则 |
    |--------|----------|
@@ -72,10 +74,10 @@ Python 只校验件号合法、坐标 0..1、置信度与 label 间距；**不�
    | 图上有号但 `visible_part_ids` 没有的 | 删该 callout，禁止自创件号 |
    | 序号全贴画布边缘、引出线全竖直/全水平 | 把 label 就近散开，改 `route` |
 
-   校正只改 `structure_callout_anchors.yaml` 再跑 `structure_callout_overlay.py`（及必要时 `svg_screenshot.py`）。**禁止**为纠件号而二次文生图/图生图改轮廓。两轮后仍对不上的件写入 `uncertain` 或从本视 `visible_part_ids` 拿掉，不得硬标。
+   校正只改 `structure_callout_anchors.yaml` 再跑 `structure_callout_overlay.py`（及必要时 `svg_screenshot.py`）。**禁止**为纠件号而二次文生图/图生图改轮廓或重拼零件。两轮后仍对不上的件写入 `uncertain` 或从本视 `visible_part_ids` 拿掉，不得硬标。
 
-5. **`in_prompt` 降级**：仅当无法叠图时，把可见件号列表写入提示；生成后对照 `parts_legend`，错号则重做或改 overlay。
-6. **`contour_only`**：只出无号轮廓；正文用部件表说明。
+6. **`in_prompt` 降级**：仅当无法叠图时，把可见件号列表写入提示；生成后对照 `parts_legend`，错号则重做或改 overlay。
+7. **`contour_only`**：只出无号轮廓；正文用部件表说明。仍建议按件拼装，便于日后补号。
 
 ### 4. 回写 figure_plan
 
@@ -84,7 +86,7 @@ Python 只校验件号合法、坐标 0..1、置信度与 label 间距；**不�
 ```yaml
 - fig: 1
   role: assembly
-  path: lineart_assist/….png   # 优先带 callouts 的路径
+  path: lineart_assist/….png   # 入文预览；可编辑源为 parts/{视}_{id}.svg + 同视 *_composed.svg / *_callouts.svg
   covers: ["1", "2", "总装"]
   kind: lineart
   relevance: 80
@@ -107,8 +109,9 @@ Python 只校验件号合法、坐标 0..1、置信度与 label 间距；**不�
 ## 自检（内部）
 
 - [ ] 已跑 `image_gen.py`；CAD 未当合格线稿、未入文  
+- [ ] 已按 `structure_lineart_compose.md` 写出 `parts/{视}_{id}.svg` 与相对引用的总 SVG（非扁图、非总图 clip 整图）；一层一件号，未把筋/齿/螺栓拆成独立组  
 - [ ] `parts_legend` / 图上件号与 StructureSchema 一致；跨图未改号  
-- [ ] `structure_callout_anchors.yaml` 已落盘；已 Read 叠标后的图；件号与部件名称一一对应（非仅坐标合法）；label 就近分散，引出方向不单一；校正只改 YAML 重叠标
-- [ ] `uncertain` 件未画死序号  
-- [ ] 优先 overlay；未自创件号  
+- [ ] `structure_callout_anchors.yaml` 已落盘且含 `base_svg_path`；已 Read 叠标后的图；件号与部件名称一一对应（非仅坐标合法）；label 就近分散，引出方向不单一；校正只改 YAML 重叠标
+- [ ] `uncertain` 件未画死序号、未用 crop/image 冒充已绘结构  
+- [ ] 优先 overlay；未自创件号或子件号  
 - [ ] 未误用 `design_lineart_*`  

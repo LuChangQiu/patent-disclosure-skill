@@ -1,7 +1,7 @@
 ---
 name: patent-disclosure-skill
 description: "中国专利技能：专利点挖掘与交底书（发明/实用/外观）编写，通俗解读专利，嗅探政策动向，辅助审查答复。| China patents skill: mine patent points and draft disclosures (invention / utility model / design), plain-language reading, policy sniffing, assisted office-action response."
-version: "3.6.2"
+version: "3.7.0"
 user-invocable: true
 argument-hint: "[可选：项目路径 / 专利号或 PDF / 政策动向嗅探或技能进化 / 审查答复或案例入库]"
 allowed-tools: Read, Write, Edit, Grep, Glob, WebSearch, Bash
@@ -35,7 +35,7 @@ prompts/oa/                  # 模式 D：审查答复 / 案例入库（旁路�
 references/schemas/          # structure / appearance / figure_plan / formula_plan / lineart / evolution / oa_case
 references/formulas/         # 发明公式推荐范式（paradigms.yaml，可外挂扩展）
 tools/crawl/                 # 国知局等爬取
-tools/shared/                # docx/mermaid/专利类型/可选 STEP（cad-env）/ 线稿门禁；browser.py + svg_screenshot.py
+tools/shared/                # docx/mermaid/专利类型/可选 STEP（cad-env）/ 线稿门禁与按件拼装；browser.py + svg_screenshot.py
 tools/patent_reader/         # 解读工具：shared/ | extract/ | analyze/ | vault/
 tools/oa/                    # 模式 D：config / embed / sqlite-vec / ingest / search
 outputs/evolution/           # 模式 C 清单默认落盘（gitignore）
@@ -53,7 +53,7 @@ docs/oa/                     # 模式 D：embedding 配置模板种子（运行�
   - **外观**：先判立体/平面与要点落面，再写 `figure_plan.yaml` 选正投影（**非默认六视**；**干净实拍 + 线稿都入文**，写入 md 与 Word；CAD 不入文）（见 `design/disclosure_builder.md`）。
 - **STEP / CAD（可选，默认关）**：Step 2 用 `cad_scan.py` 分类；**不中断**挖点/成文。遇 `.step`/`.stp` 记下路径，交底 **落盘后再反问**是否开启解析；用户 **是** 才 `cad_venv.py`（已就绪则跳过安装）/`bootstrap_cad_venv.py` + `run_step_to_views.py --enable-step-parse`。CadQuery 只进 `tools/shared/cad-env`（Python 3.10–3.12，不强制 3.10）。PNG：有 Cairo 用 cairosvg，否则 `svg_screenshot.py` 无头浏览器截 SVG；**禁止为 CAD 安装 matplotlib**（matplotlib 只用于发明公式 PNG）。投影图是**普通材料**（`kind: cad`），**不得**当线稿、**不得**入文；打分后可能作图生图参考。仅有原生 CAD 则交付回复末尾提示导出 STEP。见 `project_scan.md`「CAD / STEP」。
 - **外观线稿（必做）**：填表后 **`Read`** `shared/image_gen.md` + `shared/design_lineart_assist.md`。不问用户。已有合格线稿则入文；否则大模型生成。干净实拍**同时入文**（md + Word），但不得标成线稿。CAD 不入文。仅用户明确不要或 `PATENT_SKILL_SKIP_LINEART=1` 才跳过。
-- **实用结构线稿（必做）**：填表后 **`Read`** `shared/image_gen.md` + `shared/structure_lineart_assist.md`。不问用户。对齐 `structure_schema.parts`；轮廓与序号分层。推荐 overlay：大模型只定位并把归一化锚点持久化到 `structure_callout_anchors.yaml`，再由 `structure_callout_overlay.py` 用 SVG 精确叠标；**叠标后须读图按部件名称核对引出线**（改 YAML 重叠标，最多 2 轮；禁止含件号二次生图或自创件号）。CAD 不得当线稿入文。**勿**与外观 `design_lineart_*` 混用。
+- **实用结构线稿（必做）**：填表后 **`Read`** `shared/image_gen.md` + `shared/structure_lineart_assist.md`（轮廓后 **`Read`** `shared/structure_lineart_compose.md`）。不问用户。对齐 `structure_schema.parts`；轮廓按件拼装为子 SVG + 总图相对引用，再叠序号。推荐：`structure_lineart_compose.py` 每件落 `parts/{视}_{id}.svg`，总图 `<g id="part-N">` 引用子文件（不要整图 base64+clip），大模型只定位并把归一化锚点持久化到 `structure_callout_anchors.yaml`（含 `base_svg_path`），再由 `structure_callout_overlay.py` **注入**件号组；**叠标后须读图按部件名称核对引出线**（改 YAML 重叠标，最多 2 轮；禁止含件号二次生图或自创件号）。CAD 不得当线稿入文。**勿**与外观 `design_lineart_*` 混用。
 - **解读 + Obsidian**：强烈推荐配置库；见 **`docs/obsidian-setup-guide.md`**。
 - **技能进化 / 动向嗅探（须显式触发）**：用户点名后走模式 C（政策/审查动向嗅探 → 清单）；清单含 **观点↔信源 URL 表**；未人审确认前**不**改技能正文。
 - **审查答复（须显式触发）**：用户点名后走模式 D；向量模型**可选**（可 `skip-vector`，中途再 enable + 重建）；推荐智谱 `embedding-3`；标签检索始终可用，向量超时则回退。
@@ -79,7 +79,7 @@ docs/oa/                     # 模式 D：embedding 配置模板种子（运行�
 | CAD 扫描 / STEP→多视图（可选，默认关） | `tools/shared/cad_scan.py`；**交付后**用户确认才 `cad_venv.py`（就绪则跳过安装）+ `run_step_to_views.py --enable-step-parse`；投影只当材料 |
 | 线稿规划（必做） | `prompts/shared/image_gen.md`；`tools/shared/image_gen.py`（existing / img2img / txt2img） |
 | 外观线稿（必做） | `prompts/shared/design_lineart_assist.md`；门禁 `design_lineart_gate.py` |
-| 实用结构线稿（必做） | `prompts/shared/structure_lineart_assist.md`；门禁 `structure_lineart_gate.py`；锚点 `structure_callout_anchors.yaml`；叠标 `structure_callout_overlay.py` |
+| 实用结构线稿（必做） | `prompts/shared/structure_lineart_assist.md` + `structure_lineart_compose.md`；门禁 `structure_lineart_gate.py`；拼装 `structure_lineart_compose.py`；锚点 `structure_callout_anchors.yaml`；叠标 `structure_callout_overlay.py` |
 | 联网查新 | **`Read`** `disclosure/prior_art_search.md`。优先 **`tools/crawl/cnipa_epub_search.py --type …`**（与 intake 类型一致）；`abstract` 必用；异常再 WebSearch。类型映射见 `references/patent_type_search.yaml` |
 | 交底定稿 | 发明：`tools/shared/mermaid_render.py` → md+docx；实用/外观：按各类型 builder（外观 md+docx 须同时嵌实拍与线稿） |
 | 专利通俗解读 | **`Read`** `reader/patent_plain_reader.md`；实用/外观另 Read `reader/type_hooks.md` + `shared/fill_*` |
@@ -101,7 +101,8 @@ docs/oa/                     # 模式 D：embedding 配置模板种子（运行�
 | 填表（实用/外观） | `prompts/shared/fill_structure_schema.md` / `fill_appearance_schema.md` | 图→schema + **`figure_plan.yaml`**（打分；CAD 不入文） |
 | 线稿规划 | `prompts/shared/image_gen.md` | 必做；existing / img2img / txt2img |
 | 外观线稿 | `prompts/shared/design_lineart_assist.md` | 必做；不问用户；实拍+线稿都入 md/Word；CAD 不是线稿 |
-| 实用结构线稿 | `prompts/shared/structure_lineart_assist.md` | 必做；不问用户；轮廓→按 parts 叠序号 |
+| 实用结构线稿 | `prompts/shared/structure_lineart_assist.md` | 必做；不问用户；轮廓→子 SVG+总图引用→按 parts 叠序号 |
+| 实用线稿拼装 | `prompts/shared/structure_lineart_compose.md` | 独立模块；每件一个子 SVG，总图相对引用，再注入件号 |
 | Step 5 | `prompts/disclosure/prior_art_search.md` | 查新（`--type`） |
 | Step 6 | `prompts/disclosure/disclosure_preview.md` | 摘要预览（按类型裁剪） |
 | Step 7 | 对应类型目录 `disclosure_builder.md` + `template_reference.md` | 成文（**分文件**；发明含公式时先 `formula_plan.yaml`） |
@@ -220,7 +221,7 @@ docs/oa/                     # 模式 D：embedding 配置模板种子（运行�
 □ 实用/外观已走 schema 填表（shared）并写出 figure_plan（含 relevance/quality 与必要 relates_to），未看图直接长文；实用只嵌入文线稿；外观 md+docx 同时嵌实拍与线稿；CAD 未入文
 □ Step 2/补材料已 cad_scan：遇 STEP **未**中断成文、**未**装依赖；交底落盘后才反问；仅原生 CAD 则交付回复末尾提示导出 STEP；未确认不开 step_to_views；确认后先 cad_venv 探测，已就绪则跳过 bootstrap；CAD 投影只当材料
 □ 外观线稿：已 Read image_gen.md + design_lineart_assist；已有合格线稿则未再生成，否则图生图或先描述再文生图；实拍与线稿均已入 md 与 Word；CAD 未当线稿入文
-□ 实用结构线稿：已 Read image_gen.md + structure_lineart_assist；件号对齐 parts；优先 overlay；已叠标后读图核对（非仅 Python 合法）；未自创件号；CAD 未入文
+□ 实用结构线稿：已 Read image_gen.md + structure_lineart_assist + structure_lineart_compose；件号对齐 parts；已按件写出 parts/{视}_{id}.svg 且总图相对引用（一层一件号，未拆筋/齿/螺栓，未整图 clip）；优先 overlay 注入；已叠标后读图核对（非仅 Python 合法）；未自创件号；CAD 未入文
 □ 迭代改材料/主题时已重评 figure_plan（含图际关联）
 □ 解读实用/外观：公开号种类码或 patent_type.py / fetch 状态已判别类型，并 Read type_hooks + 共用 schema（用户未口头声明也可）
 □ 模式 C：已显式触发；清单含观点↔URL 主表；未确认前未改技能；确认后才 apply

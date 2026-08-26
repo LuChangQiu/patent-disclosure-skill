@@ -18,7 +18,7 @@
 
 见 [example_utility_model_ev_powertrain/README.md](example_utility_model_ev_powertrain/README.md)。
 
-要点：intake 指定「实用新型」→ 填 StructureSchema + **`figure_plan.yaml`**（实拍不入文）→ 按 brief **文生图**线稿（`image_gen.md`）→ `prompts/disclosure/utility_model/` 成文（只嵌合格线稿）→ 查新 `--type utility_model`。  
+要点：intake 指定「实用新型」→ 填 StructureSchema + **`figure_plan.yaml`**（实拍不入文）→ 按 brief **文生图**线稿并按件拼装 SVG（`image_gen.md` / `structure_lineart_compose.md`）→ `prompts/disclosure/utility_model/` 成文（只嵌合格线稿）→ 查新 `--type utility_model`。  
 STEP 扫描夹具在 `tests/fixtures/cad/demo_snap_plate.step`，与本示例无关。
 
 ## 外观设计交底演练

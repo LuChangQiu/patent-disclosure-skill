@@ -2,7 +2,8 @@
 """按持久化锚点给实用新型线稿叠加件号与引出线。
 
 大模型只负责识别部件并给出归一化锚点/标签坐标；本脚本校验件号后，
-以 SVG 精确绘制曲线和序号，不让生图模型二次改写结构图。
+以 SVG 精确绘制曲线和序号。若视图提供 base_svg_path（按件拼装结果，零件层指向 parts/*.svg），
+则把件号组注入该 SVG，不把零件层压扁、不改写子文件引用。
 
   python tools/shared/structure_callout_overlay.py \
     --case-dir outputs/case \
@@ -15,10 +16,14 @@ import base64
 import html
 import json
 import math
+import re
 import struct
 import sys
 from pathlib import Path
 from typing import Any
+
+CALLOUT_START = "<!-- structure-callouts -->"
+CALLOUT_END = "<!-- /structure-callouts -->"
 
 
 def load_data(path: Path) -> dict[str, Any]:
@@ -123,9 +128,13 @@ def validate_manifest(
             errors.append(f"views[{vi}] 非法")
             continue
         image_raw = str(view.get("image_path") or "").strip()
+        base_svg_raw = str(view.get("base_svg_path") or "").strip()
         output_raw = str(view.get("output_svg_path") or "").strip()
-        if not image_raw:
-            errors.append(f"views[{vi}] 缺少 image_path")
+        if base_svg_raw:
+            if not resolve_path(case_dir, base_svg_raw).is_file():
+                errors.append(f"views[{vi}] base_svg_path 不存在: {base_svg_raw}")
+        elif not image_raw:
+            errors.append(f"views[{vi}] 缺少 image_path 或 base_svg_path")
         elif not resolve_path(case_dir, image_raw).is_file():
             errors.append(f"views[{vi}] 原图不存在: {image_raw}")
         if not output_raw:
@@ -211,31 +220,53 @@ def _svg_path(
     )
 
 
-def render_view(view: dict[str, Any], case_dir: Path) -> Path:
-    image_path = resolve_path(case_dir, str(view["image_path"]))
-    output_path = resolve_path(case_dir, str(view["output_svg_path"]))
-    width, height = image_size(image_path)
+def svg_canvas_size(path: Path) -> tuple[int, int]:
+    text = path.read_text(encoding="utf-8")
+    match = re.search(
+        r'viewBox="\s*([0-9.]+)\s+([0-9.]+)\s+([0-9.]+)\s+([0-9.]+)"',
+        text,
+    )
+    if match:
+        return max(1, int(round(float(match.group(3))))), max(1, int(round(float(match.group(4)))))
+    width_m = re.search(r'\bwidth="([0-9.]+)', text)
+    height_m = re.search(r'\bheight="([0-9.]+)', text)
+    if width_m and height_m:
+        return (
+            max(1, int(round(float(width_m.group(1))))),
+            max(1, int(round(float(height_m.group(1))))),
+        )
+    raise ValueError(f"无法读取 SVG 画布尺寸: {path}")
+
+
+def strip_callouts(svg_text: str) -> str:
+    start = svg_text.find(CALLOUT_START)
+    end = svg_text.find(CALLOUT_END)
+    if start != -1 and end != -1 and end > start:
+        return svg_text[:start] + svg_text[end + len(CALLOUT_END) :]
+    return svg_text
+
+
+def inject_callouts(svg_text: str, markup: str) -> str:
+    stripped = strip_callouts(svg_text).rstrip()
+    close = stripped.rfind("</svg>")
+    if close == -1:
+        raise ValueError("base SVG 缺少 </svg>")
+    block = f"{CALLOUT_START}\n{markup}\n{CALLOUT_END}\n"
+    return stripped[:close] + block + stripped[close:]
+
+
+def callouts_markup(view: dict[str, Any], width: int, height: int) -> str:
     style = view.get("style") if isinstance(view.get("style"), dict) else {}
     font_size = float(style.get("font_size") or max(18, min(width, height) * 0.032))
     line_width = float(style.get("line_width") or max(1.5, min(width, height) * 0.0024))
     label_style = str(style.get("label_style") or "plain")
     circle_radius = float(style.get("circle_radius") or font_size * 0.72)
-
-    encoded = base64.b64encode(image_path.read_bytes()).decode("ascii")
     svg: list[str] = [
-        '<?xml version="1.0" encoding="UTF-8"?>',
-        (
-            f'<svg xmlns="http://www.w3.org/2000/svg" '
-            f'xmlns:xlink="http://www.w3.org/1999/xlink" '
-            f'width="{width}" height="{height}" viewBox="0 0 {width} {height}">'
-        ),
-        f'<image width="{width}" height="{height}" href="data:{_mime(image_path)};base64,{encoded}"/>',
         (
             '<g id="structure-callouts" fill="none" stroke="#111" '
             f'stroke-width="{line_width:.2f}" stroke-linecap="round" stroke-linejoin="round">'
-        ),
+        )
     ]
-    text_items: list[str] = []
     for item in view.get("callouts") or []:
         pid = str(item["id"])
         anchor_n = _point(item["anchor"])
@@ -257,17 +288,45 @@ def render_view(view: dict[str, Any], case_dir: Path) -> Path:
                 f'<circle cx="{label[0]:.2f}" cy="{label[1]:.2f}" r="{circle_radius:.2f}" fill="white"/>'
             )
         svg.append("</g>")
-        text_items.append(
-            (
-                f'<text x="{label[0]:.2f}" y="{label[1]:.2f}" '
-                f'font-family="Arial, Helvetica, sans-serif" font-size="{font_size:.2f}" '
-                'font-weight="500" text-anchor="middle" dominant-baseline="central" '
-                f'fill="#111">{html.escape(pid)}</text>'
-            )
+        svg.append(
+            f'<text x="{label[0]:.2f}" y="{label[1]:.2f}" '
+            f'font-family="Arial, Helvetica, sans-serif" font-size="{font_size:.2f}" '
+            'font-weight="500" text-anchor="middle" dominant-baseline="central" '
+            f'fill="#111">{html.escape(pid)}</text>'
         )
     svg.append("</g>")
-    svg.extend(text_items)
-    svg.append("</svg>")
+    return "\n".join(svg)
+
+
+def render_view(view: dict[str, Any], case_dir: Path) -> Path:
+    output_path = resolve_path(case_dir, str(view["output_svg_path"]))
+    base_raw = str(view.get("base_svg_path") or "").strip()
+    if base_raw:
+        base_path = resolve_path(case_dir, base_raw)
+        width, height = svg_canvas_size(base_path)
+        markup = callouts_markup(view, width, height)
+        text = inject_callouts(base_path.read_text(encoding="utf-8"), markup)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(text if text.endswith("\n") else text + "\n", encoding="utf-8")
+        return output_path
+
+    image_path = resolve_path(case_dir, str(view["image_path"]))
+    width, height = image_size(image_path)
+    encoded = base64.b64encode(image_path.read_bytes()).decode("ascii")
+    markup = callouts_markup(view, width, height)
+    svg = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        (
+            f'<svg xmlns="http://www.w3.org/2000/svg" '
+            f'xmlns:xlink="http://www.w3.org/1999/xlink" '
+            f'width="{width}" height="{height}" viewBox="0 0 {width} {height}">'
+        ),
+        f'<image width="{width}" height="{height}" href="data:{_mime(image_path)};base64,{encoded}"/>',
+        CALLOUT_START,
+        markup,
+        CALLOUT_END,
+        "</svg>",
+    ]
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text("\n".join(svg) + "\n", encoding="utf-8")
     return output_path

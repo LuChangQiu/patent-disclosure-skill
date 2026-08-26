@@ -122,9 +122,10 @@ CadQuery 只进隔离 venv（Python **3.10–3.12**，本机已是 3.11/3.12 不
 python tools/shared/image_gen.py --case-dir outputs/{案件}
 python tools/shared/design_lineart_gate.py --case-dir outputs/{案件} --prepare-jobs
 python tools/shared/structure_lineart_gate.py --case-dir outputs/{案件} --prepare-jobs
+python tools/shared/structure_lineart_compose.py --case-dir outputs/{案件}
 ```
 
-流程见 `prompts/shared/image_gen.md`、`design_lineart_assist.md`、`structure_lineart_assist.md`。结构线稿件号对齐 StructureSchema，推荐 overlay，禁止自创件号。
+流程见 `prompts/shared/image_gen.md`、`design_lineart_assist.md`、`structure_lineart_assist.md`、`structure_lineart_compose.md`。结构线稿按 `parts` 写出子 SVG 再拼总图、再 overlay 件号，禁止自创件号。
 
 ## 可选：国知局公布公告站抓取（Step 5 查新优先路径）
 

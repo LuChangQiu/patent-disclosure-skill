@@ -1,7 +1,8 @@
 # StructureCalloutAnchors — 结构线稿件号锚点合同
 #
-# 大模型查看“已生成的无号轮廓图”后填写 anchor / label；Python/SVG 只负责
-# 精确绘制，不再让生图模型二次改写结构。坐标均按原图宽高归一化到 0..1。
+# 大模型查看“拼装后的无号图 / 轮廓图”后填写 anchor / label；Python/SVG 只负责
+# 精确绘制，不再让生图模型二次改写结构。坐标均按画布宽高归一化到 0..1。
+# 有 base_svg_path 时注入拼装 SVG 的零件图层，不把零件压成一张扁图。
 #
 # 落盘：案件目录 structure_callout_anchors.yaml
 
@@ -11,6 +12,7 @@ coordinate_system: normalized
 structure_ref: structure_schema.yaml
 views:
   - view_name: 总装立体图
+    base_svg_path: lineart_assist/总装立体图_composed.svg
     image_path: lineart_assist/总装立体图_structure_lineart.png
     output_svg_path: lineart_assist/总装立体图_structure_lineart_callouts.svg
     style:

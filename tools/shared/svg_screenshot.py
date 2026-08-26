@@ -13,8 +13,10 @@ PNG for CAD views does not use matplotlib. If the browser cannot start, keep SVG
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import os
+import re
 import socket
 import sys
 import threading
@@ -82,8 +84,53 @@ def wrap_svg_html(svg_text: str) -> str:
     return _HTML.replace("__SVG__", text)
 
 
+_HREF_ATTR_RE = re.compile(r'((?:xlink:)?href=")([^"]+)(")', re.IGNORECASE)
+_REMOTE_HREF_PREFIXES = ("data:", "http://", "https://", "#", "//", "file:")
+
+
+def inline_local_hrefs(
+    svg_text: str, base_dir: Path, *, _seen: frozenset[Path] | None = None
+) -> str:
+    """Resolve relative href / xlink:href to data URIs so a pasted SVG still renders.
+
+    Nested ``.svg`` files are inlined recursively. Missing or remote hrefs are left as-is.
+    """
+    seen = _seen or frozenset()
+
+    def repl(match: re.Match[str]) -> str:
+        raw = match.group(2).strip()
+        if not raw or raw.lower().startswith(_REMOTE_HREF_PREFIXES):
+            return match.group(0)
+        target = (base_dir / raw).resolve()
+        if not target.is_file() or target in seen:
+            return match.group(0)
+        suffix = target.suffix.lower()
+        nested = seen | {target}
+        if suffix == ".svg":
+            inner = inline_local_hrefs(
+                target.read_text(encoding="utf-8"), target.parent, _seen=nested
+            )
+            uri = "data:image/svg+xml;base64," + base64.b64encode(inner.encode("utf-8")).decode(
+                "ascii"
+            )
+        elif suffix in {".png", ".jpg", ".jpeg", ".gif", ".webp"}:
+            mime = {
+                ".png": "image/png",
+                ".jpg": "image/jpeg",
+                ".jpeg": "image/jpeg",
+                ".gif": "image/gif",
+                ".webp": "image/webp",
+            }[suffix]
+            uri = f"data:{mime};base64," + base64.b64encode(target.read_bytes()).decode("ascii")
+        else:
+            return match.group(0)
+        return f"{match.group(1)}{uri}{match.group(3)}"
+
+    return _HREF_ATTR_RE.sub(repl, svg_text)
+
+
 def _load_svg(path: Path) -> str:
-    return path.read_text(encoding="utf-8")
+    return inline_local_hrefs(path.read_text(encoding="utf-8"), path.parent)
 
 
 class _SvgHandler(BaseHTTPRequestHandler):

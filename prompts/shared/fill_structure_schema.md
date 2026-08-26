@@ -26,6 +26,7 @@
    - 成文前即使有 **`.step`/`.stp`** 也不投影、不装依赖；用已有图片/文档填表。仅当用户已在**交底落盘后**确认开启（或成文前主动要求）：按 `project_scan.md`「CAD / STEP」运行 **`run_step_to_views.py --enable-step-parse`**，以产出的 `views/*` + `*.seed.yaml` 为材料起点。  
    - 仅有原生 CAD、无 STEP：勿假装已解析；交付回复末尾提示导出 STEP（见 `cad_scan.py`）。  
 2. **跨图联读**：总装 / 爆炸 / 局部须对照同一套件号；先建立「图角色」再填 parts（禁止每张图各起一套命名）  
+   - **件号粒度**：`parts` 只列为交底第三章要指认的部件。可分离总成（端盖、定子、转子、轴）可以分开写。**不要**为了画图把加强筋、单颗螺栓、齿形、倒角、剖面符号拆成独立 `parts.id`；这些写进该件的 `shape` 即可。剖切指示若入表，整图共用一个符号件，不要按箭头拆号。  
 3. 先填 StructureSchema，再写交底/笔记；禁止看图直接长文  
 4. **交底模式**：在上表目录 **`Write`** `structure_schema.yaml`（或 json）**与** `figure_plan.yaml`  
    - 若有 `figure_plan.seed.yaml` / `structure_schema.seed.yaml`：可复制审改为定稿；**CAD 种子条保持 `kind: cad`、不入文**，须识图重评 `relevance` / `quality`。  
@@ -35,7 +36,7 @@
    - **入文只选合格 `lineart`**；`cad` / 实拍只打分，禁止当线稿入文  
    - 仅 `use_in_disclosure: true` 分配连续 `fig`（1…N）  
    - `theme_summary` 写当前结构主题；`patent_type: utility_model`  
-5. **结构线稿（必做）**：**`Read`** `prompts/shared/image_gen.md`，再 **`Read`** `prompts/shared/structure_lineart_assist.md`。不问用户。先 `image_gen.py` 看 `mode`：已有合格线稿则入文、不再生成；否则图生图（CAD/实拍可作参考）或文生图。件号 overlay 对齐 `parts`；叠标后须读图按名称核对引出线（改锚点 YAML 重叠标，最多 2 轮）。禁止自创件号。勿与外观 `design_lineart_*` 混用。仅 `PATENT_SKILL_SKIP_LINEART=1` 或用户明确不要线稿才跳过。  
+5. **结构线稿（必做）**：**`Read`** `prompts/shared/image_gen.md`，再 **`Read`** `prompts/shared/structure_lineart_assist.md`（轮廓后必 **`Read`** `structure_lineart_compose.md`）。不问用户。先 `image_gen.py` 看 `mode`：已有合格线稿则入文、不再生成整张；否则图生图（CAD/实拍可作参考）或文生图。按 `parts` 写出子 SVG 再拼总图，再 overlay 件号；叠标后须读图按名称核对引出线（改锚点 YAML 重叠标，最多 2 轮）。禁止自创件号。勿与外观 `design_lineart_*` 混用。仅 `PATENT_SKILL_SKIP_LINEART=1` 或用户明确不要线稿才跳过。  
 6. **解读模式**：工作目录 **`structure_schema.json`**（入库脚本约定名）；`figure_plan` **可选**，不强制；若写 figure_plan 仍建议补 `relates_to`  
 7. `uncertain` 不得写成确定保护点；跨图对不上的写入 `uncertain`  
 8. `mode`：`disclosure` | `reader`

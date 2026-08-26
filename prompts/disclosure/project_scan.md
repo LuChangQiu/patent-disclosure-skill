@@ -93,11 +93,11 @@ python ${CLAUDE_SKILL_DIR}/tools/shared/run_step_to_views.py --enable-step-parse
 
 ## 实用新型结构线稿（必做）
 
-仅**实用新型**。细则：`prompts/shared/image_gen.md` + `prompts/shared/structure_lineart_assist.md`。
+仅**实用新型**。细则：`prompts/shared/image_gen.md` + `prompts/shared/structure_lineart_assist.md` + `prompts/shared/structure_lineart_compose.md`。
 
 - **默认开**；**不问用户**。填 Structure + figure_plan 后跑 `image_gen.py`。  
 - CAD 投影 **不是**线稿、**不得**入文；分数够才可能作图生图参考。  
-- 序号层推荐 **overlay**（按部件表叠引出线，禁止自创件号）。勿与 `design_lineart_*` 混用。  
+- 轮廓按 `parts` **拼装**为子 SVG + 总图相对引用，序号层推荐 **overlay 注入**（禁止自创件号）。勿与 `design_lineart_*` 混用。  
 - 仅用户明确不要线稿或 `PATENT_SKILL_SKIP_LINEART=1` 才跳过。
 
 ## Office 文档（.docx / .pptx）：必先转换再读

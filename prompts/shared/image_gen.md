@@ -46,7 +46,7 @@ python ${CLAUDE_SKILL_DIR}/tools/shared/image_gen.py --case-dir "outputs/{案件
 | **外观设计** | **干净实拍**（`photo_clean`）**和**合格/生成的 **线稿**（`kind: lineart`）。两套文档内容一致，用 `md_to_docx.py` 出同名 `.docx`，勿只贴线稿漏实拍、也勿只出 md 不出 Word。 | CAD 投影；重场景/包装（`photo_scene`）默认不入 |
 | **实用新型** | 合格/生成的 **线稿** | CAD、实拍（可作图生图参考） |
 
-- 新生成的线稿默认 `use_in_disclosure: true`（实用再 overlay 件号；叠标后须读图按 `parts` 名称核对引出线，见 `structure_lineart_assist.md`）。  
+- 新生成的线稿默认 `use_in_disclosure: true`（实用先按件写出子 SVG 再拼总图，再 overlay 件号；叠标后须读图按 `parts` 名称核对引出线，见 `structure_lineart_assist.md` / `structure_lineart_compose.md`）。  
 - 外观实拍条同样 `use_in_disclosure: true`，与对应视线稿用 `relates_to: same_state` 互链。  
 - `kind: cad`：**禁止** `use_in_disclosure: true`。
 

@@ -53,6 +53,46 @@ class TestStructureCalloutOverlay(unittest.TestCase):
             self.assertIn("<path", text)
             self.assertIn(">1</text>", text)
             self.assertIn("data:image/png;base64,", text)
+            self.assertIn("structure-callouts", text)
+
+    def test_injects_into_composed_svg_without_flattening_parts(self):
+        with tempfile.TemporaryDirectory() as td:
+            case = Path(td)
+            (case / "composed.svg").write_text(
+                '<?xml version="1.0" encoding="UTF-8"?>\n'
+                '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="80" '
+                'viewBox="0 0 100 80">\n'
+                '<g id="part-1" data-part-id="1"><rect width="40" height="40"/></g>\n'
+                "</svg>\n",
+                encoding="utf-8",
+            )
+            manifest = {
+                "version": 1,
+                "coordinate_system": "normalized",
+                "views": [
+                    {
+                        "base_svg_path": "composed.svg",
+                        "output_svg_path": "labeled.svg",
+                        "callouts": [
+                            {
+                                "id": "1",
+                                "name": "壳体",
+                                "anchor": [0.40, 0.40],
+                                "label": [0.80, 0.20],
+                                "confidence": 0.95,
+                            }
+                        ],
+                    }
+                ],
+            }
+            structure = {"parts": [{"id": "1", "name": "壳体"}]}
+            self.assertEqual(validate_manifest(manifest, case, structure=structure), [])
+            output = render_view(manifest["views"][0], case)
+            text = output.read_text(encoding="utf-8")
+            self.assertIn('id="part-1"', text)
+            self.assertIn('id="structure-callouts"', text)
+            self.assertIn(">1</text>", text)
+            self.assertNotIn("data:image/png;base64,", text)
 
     def test_rejects_unknown_id_and_bad_coordinates(self):
         with tempfile.TemporaryDirectory() as td:

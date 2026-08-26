@@ -247,9 +247,11 @@ def build_jobs(brief: dict[str, Any], case_dir: Path) -> list[dict[str, Any]]:
                 "forbid_text_only": False,
                 "host_hint": (
                     "Use reference images for img2img contour; if img2img unavailable, "
-                    "describe references then txt2img. After contour generation, inspect the image "
+                    "describe references then txt2img. After contour generation, write "
+                    "structure_lineart_compose.yaml (one SVG group per part) and run "
+                    "structure_lineart_compose.py; then inspect the composed figure "
                     "with a vision model and persist normalized part anchors plus nearby label "
-                    "positions in structure_callout_anchors.yaml; then render SVG with "
+                    "positions in structure_callout_anchors.yaml (set base_svg_path); then render SVG with "
                     "structure_callout_overlay.py. After overlay, re-read the labeled figure "
                     "and verify each leader lands on the named part (not a neighbor); fix YAML "
                     "and re-overlay (max 2 rounds); do not regenerate contours to fix numbers. "
@@ -347,7 +349,8 @@ def main(argv: list[str] | None = None) -> int:
             "jobs": jobs,
             "note": (
                 "See prompts/shared/image_gen.md: img2img, else describe then txt2img. "
-                "CAD is not lineart. Persist vision-located anchors, overlay SVG callouts, "
+                "CAD is not lineart. Compose per-part SVG groups, persist vision-located "
+                "anchors with base_svg_path, overlay SVG callouts into the composed file, "
                 "then re-read the labeled figure and fix YAML if a leader hits the wrong part "
                 "(max 2 rounds); do not invent ids."
             ),

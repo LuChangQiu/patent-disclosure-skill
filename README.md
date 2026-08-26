@@ -115,7 +115,7 @@
 <tr><td nowrap width="1%"><strong>专利类型</strong></td><td>发明 / 实用新型 / 外观设计<strong>分模板成文</strong>；实用与外观先填 Schema，再写 <code>figure_plan.yaml</code> 排序入文图（成文不扫全 assets 临场挑图）</td></tr>
 <tr><td nowrap width="1%"><strong>项目扫描</strong></td><td>按优先级读文档 / 代码；<code>.docx</code> / <code>.pptx</code> 先转 Markdown 再扫；可选扫描 <code>.step</code>/<code>.stp</code> 与原生 CAD（<strong>默认不解析</strong>，遇 STEP 成文不中断，交底落盘后再问）（<code>project_scan.md</code>）</td></tr>
 <tr><td nowrap width="1%"><strong>外观线稿</strong></td><td>成文前选用或生成产品线稿（已有合格线稿优先，否则图生图 / 文生图）；与干净实拍一并写入 Markdown 和 Word（<code>design_lineart_assist.md</code>）</td></tr>
-<tr><td nowrap width="1%"><strong>实用结构线稿</strong></td><td>成文前选用或生成结构线稿，并按 <code>structure_schema.parts</code> 叠部件序号（<code>structure_lineart_assist.md</code>）</td></tr>
+<tr><td nowrap width="1%"><strong>实用结构线稿</strong></td><td>成文前选用或生成结构线稿，按 <code>structure_schema.parts</code> 写出子 SVG、总图相对引用并叠部件序号（<code>structure_lineart_assist.md</code> / <code>structure_lineart_compose.md</code>）</td></tr>
 <tr><td nowrap width="1%"><strong>专利点</strong></td><td>候选点讨论与融合（按类型：<code>invention|utility_model|design</code> 挖点文件）</td></tr>
 <tr><td nowrap width="1%"><strong>查新</strong></td><td><strong>优先</strong> <a href="http://epub.cnipa.gov.cn/">国知局 · 中国专利公布公告</a>（<code>tools/crawl/cnipa_epub_search.py</code>，<code>--type</code> 对齐类型）；异常或无果时降级 WebSearch。著录写入第一章（<code>prior_art_search.md</code>）</td></tr>
 <tr><td nowrap width="1%"><strong>交底书成稿</strong></td><td>脱敏模版；发明用 <strong>mermaid</strong> 框图；实用/外观按 <code>figure_plan</code> 嵌结构图或视图；定稿可出 <strong>.docx</strong></td></tr>

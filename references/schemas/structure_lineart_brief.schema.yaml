@@ -48,17 +48,19 @@ views:
 ## 分层纪律（硬）
 
 1. **轮廓层**：合格已有线稿直接用，否则大模型生成（图生图 → 失败则先描述再文生图 → 无参考则文生图）。  
-2. **锚点层**：大模型只查看已生成轮廓，按 `parts_legend` / `visible_part_ids` 定位；归一化坐标持久化到 `structure_callout_anchors.yaml`（合同见 `structure_callout_anchors.schema.yaml`）。  
-3. **序号层**：`structure_callout_overlay.py` 校验 StructureSchema 后用 SVG 精确叠引出曲线与件号；禁止生图模型二次改图或自创编号。  
-4. **叠标后语义自查**：Read 叠标图，按 `parts` 名称核对引出线是否点在该件（邻件对调、漏号、剖切符号当零件均须改 YAML 后重叠标；最多 2 轮）。Python 合法 ≠ 图面对。  
-5. `callout_mode: in_prompt`：仅当宿主无法叠图时；仍须逐条列出可见件号与名称。  
-6. `callout_mode: contour_only`：只出无号轮廓；正文靠部件表指认。
+2. **拼装层**：按 `structure_lineart_compose.yaml` 每件一个子 SVG `parts/{视}_{id}.svg`，总图 `<g id="part-N">` 相对引用（总装 `crop` 或爆炸单件图）；粒度止于本视可见件号，禁止再拆筋/齿/螺栓或自创子件号。可编辑源是子文件 + 总图引用，PNG 只是预览。见 `structure_lineart_compose.schema.yaml`。  
+3. **锚点层**：大模型只查看拼装后的图，按 `parts_legend` / `visible_part_ids` 定位；归一化坐标持久化到 `structure_callout_anchors.yaml`（合同见 `structure_callout_anchors.schema.yaml`），并写 `base_svg_path`。  
+4. **序号层**：`structure_callout_overlay.py` 校验 StructureSchema 后把引出曲线与件号**注入**拼装 SVG；禁止生图模型二次改图或自创编号。  
+5. **叠标后语义自查**：Read 叠标图，按 `parts` 名称核对引出线是否点在该件（邻件对调、漏号、剖切符号当零件均须改 YAML 后重叠标；最多 2 轮）。Python 合法 ≠ 图面对。  
+6. `callout_mode: in_prompt`：仅当宿主无法叠图时；仍须逐条列出可见件号与名称。  
+7. `callout_mode: contour_only`：只出无号轮廓；正文靠部件表指认。
 
 ## 硬禁止
 
 - 把 CAD 投影或实拍标成合格线稿或入文  
 - 为 `uncertain` 中的部件画出确定序号  
 - 跨图同一部件使用不同件号  
+- 为画图自创子件号，或把同一 `parts.id` 拆成多块拼装组（筋/齿/螺栓圈/剖面线）  
 - 将线稿写成「已按国知局规范绘制的正式附图」  
 - 套用 `design_lineart_*` 处理实用新型（反之亦然）
 

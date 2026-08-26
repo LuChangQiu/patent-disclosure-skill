@@ -69,7 +69,7 @@ python ${CLAUDE_SKILL_DIR}/tools/shared/iteration_dialog_log.py --case-dir "{案
    - 若本轮**新增/更新**了目录内文件：再跑 **`tools/shared/cad_scan.py -r …`**（规则同 `project_scan.md`「CAD / STEP」）。  
    - `ask_enable_step_parse` → **本轮成文不中断**；确认前不装依赖、不改 STEP 视图；**本轮交付回复末尾**再反问。`hint_export_step` → 本轮交付回复**末尾**提示导出 STEP。  
    - 外观：按 `image_gen.md` + `design_lineart_assist.md` 重评/补线稿（不问用户；实拍与线稿都入 md 与 Word；CAD 不入文）。  
-   - 实用：按 `image_gen.md` + `structure_lineart_assist.md` 重评/补线稿（不问用户；件号 overlay；CAD 不入文）。  
+   - 实用：按 `image_gen.md` + `structure_lineart_assist.md` + `structure_lineart_compose.md` 重评/补线稿（不问用户；按件写出子 SVG 再拼总图；件号 overlay；CAD 不入文）。  
 3. 在稿内完成合并或纠正逻辑（自检 **8.1（发明：标题/术语/实施例）、8.2、8.3** 见 `disclosure_self_check.md`；实用/外观核 **8.4/8.5**）。术语族替换须 1.1 至第六章及 mermaid 整族对齐，机制不丢。  
 4. **`Write`** 新时间戳 `.md` → 运行 **`mermaid_render.py -o`** 写出定稿图与 **`.docx`**。  
 5. 追加 **`交底书修订对话记录.md`**（**`iteration_dialog_log.py`** 或手工），见上文「修订对话记录」。  

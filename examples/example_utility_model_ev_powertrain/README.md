@@ -22,7 +22,7 @@
 - 项目扫描目录：examples/example_utility_model_ev_powertrain/knowledge/
 - 技术主题：集成式电驱桥壳体、电机腔可抽拔、冷却水套
 - 先 Read prompts/shared/fill_structure_schema.md，主要依据 structure_brief.md 填 StructureSchema，并写出 figure_plan.yaml（实拍标 photo_scene / photo_clean，不入文；无合格线稿）
-- 成文前线稿：Read image_gen.md + structure_lineart_assist.md。本案例走文生图（或实拍图生图失败后先描述再文生图）；按 brief 第 8 节出总装、纵剖、爆炸、局部；件号 overlay 对齐 parts
+- 成文前线稿：Read image_gen.md + structure_lineart_assist.md + structure_lineart_compose.md。本案例走文生图（或实拍图生图失败后先描述再文生图）；按 brief 第 8 节出总装、纵剖、爆炸、局部；按 parts 写出子 SVG 再拼总图、再 overlay 件号
 - 再按 prompts/disclosure/utility_model/ 挖点与成文（只嵌 figure_plan 入文线稿）
 - 查新：cnipa_epub_search.py --type utility_model ，关键词含电驱桥、壳体、水套
 ```

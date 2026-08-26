@@ -129,4 +129,5 @@ figures:
 2. 大模型生成（图生图，或降级「先描述再文生图」/ 文生图）
 
 生成的线稿追加为 `kind: lineart`、`use_in_disclosure: true`。  
-**外观**：干净实拍同样入文，与线稿成对出现在 Markdown 和 Word。CAD 投影始终不入文。详见 `design_lineart_assist.md` / `structure_lineart_assist.md`。
+**外观**：干净实拍同样入文，与线稿成对出现在 Markdown 和 Word。CAD 投影始终不入文。详见 `design_lineart_assist.md`。  
+**实用新型**：按件写出子 SVG、总图相对引用后再叠序号；入文 PNG 为预览。详见 `structure_lineart_assist.md` / `structure_lineart_compose.md`。CAD 投影始终不入文。

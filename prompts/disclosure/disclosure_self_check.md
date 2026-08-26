@@ -81,7 +81,7 @@
 - [ ] 附图「如图 N」与 `figure_plan` 的 `fig`/`path` 一致（非散落 assets 临场挑选）
 - [ ] 总装+局部入文时 `relates_to` 已写；正文「局部/剖视」表述与之对齐；跨图件号一致
 - [ ] 入文图仅为合格 lineart；CAD/实拍未误入正文  
-- [ ] 结构线稿已走 image_gen：存在 `structure_lineart_brief`（或已有合格线稿故跳过生成）；件号与 `structure_schema.parts` 一致；已叠标后读图核对引出线落点（非仅 overlay 脚本合法）；未误用 `design_lineart_*`
+- [ ] 结构线稿已走 image_gen：存在 `structure_lineart_brief`（或已有合格线稿故跳过生成）；已按件拼装（`structure_lineart_compose`：磁盘上有 `parts/{视}_{id}.svg`，总图相对引用，一层一件号，未拆筋/齿/螺栓，未整图 clip）；件号与 `structure_schema.parts` 一致；已叠标后读图核对引出线落点（非仅 overlay 脚本合法）；未误用 `design_lineart_*`
 
 ## 8.5 外观设计专项
 

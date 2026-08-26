@@ -97,18 +97,22 @@ python tools/shared/design_lineart_gate.py --case-dir outputs/case --prepare-job
 
 | 脚本 / 文档 | 作用 |
 |-------------|------|
-| **`prompts/shared/structure_lineart_assist.md`** | 不问用户；轮廓 → 按 Structure 叠件号 |
+| **`prompts/shared/structure_lineart_assist.md`** | 不问用户；轮廓 → 按件拼装 → 按 Structure 叠件号 |
+| **`prompts/shared/structure_lineart_compose.md`** | 独立拼装指令：每件一个子 SVG；总图相对引用；粒度止于件号 |
 | **`shared/structure_lineart_gate.py`** | 默认开；无 Structure 拒绝；无源图则允许文生图 |
-| **`shared/structure_callout_overlay.py`** | 读取大模型定位并持久化的归一化锚点，校验件号后以 SVG 曲线精确叠标 |
+| **`shared/structure_lineart_compose.py`** | 读 compose YAML，写出 `parts/{视}_{id}.svg` 与相对引用的总 SVG |
+| **`shared/structure_callout_overlay.py`** | 读取锚点后以 SVG 叠标；有 `base_svg_path` 时注入拼装图，不压扁零件层 |
 | **`references/schemas/structure_lineart_brief.schema.yaml`** | 描述合同（与外观分文件） |
-| **`references/schemas/structure_callout_anchors.schema.yaml`** | 锚点持久化合同（`anchor` + `label` + 置信度） |
+| **`references/schemas/structure_lineart_compose.schema.yaml`** | 按件槽位 / crop / 单件图合同 |
+| **`references/schemas/structure_callout_anchors.schema.yaml`** | 锚点持久化合同（`anchor` + `label` + 置信度；可选 `base_svg_path`） |
 
 ```bash
 python tools/shared/structure_lineart_gate.py --case-dir outputs/case --prepare-jobs
+python tools/shared/structure_lineart_compose.py --case-dir outputs/case
 python tools/shared/structure_callout_overlay.py --case-dir outputs/case --anchors outputs/case/structure_callout_anchors.yaml
 ```
 
-推荐 `callout_mode: overlay`：大模型只定位，Python/SVG 叠标，不做含件号的二次生图。叠标后须读图按 `parts` 名称核对引出线（改 YAML 重叠标，最多 2 轮）；脚本合法 ≠ 图面对。禁止自创件号；CAD 投影不是线稿。
+推荐：轮廓之后按件写出子 SVG 再拼总图，再 `callout_mode: overlay` 注入件号。大模型只定位，Python/SVG 叠标，不做含件号的二次生图。叠标后须读图按 `parts` 名称核对引出线（改 YAML 重叠标，最多 2 轮）；脚本合法 ≠ 图面对。禁止自创件号；CAD 投影不是线稿。可编辑源是 `parts/*.svg` + 总图引用，入文 PNG 只是预览。
 
 ## Office / mermaid（`shared/`）
 
