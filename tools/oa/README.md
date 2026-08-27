@@ -42,6 +42,15 @@ python tools/oa/ingest_case.py -i path/to/case.md
 python tools/oa/refresh_vault.py   # 索引 + Bases + 关联 Canvas
 ```
 
-Obsidian 结构：`oa/cases/history/` · `oa/pending/` · `oa/drafts/` + `_OA索引` / `_OA看板.base` / `_OA关联.canvas`。
+Obsidian 结构：`oa/cases/history/` · `oa/pending/` · `oa/drafts/` · `oa/playbooks/` + `_OA索引` / `_OA看板.base` / `_OA关联.canvas`。
+
+实务书蒸馏（先预读，只要本地路径）：
+
+```bash
+python tools/oa/ingest_playbook.py peek --path book.pdf
+python tools/oa/ingest_playbook.py ensure-skill
+python tools/oa/ingest_playbook.py ingest --from-skill-dir DISTILLED --source-path book.pdf --slug slug
+python tools/oa/ingest_playbook.py list
+```
 
 见 `prompts/oa/` 与 [SKILL.md](../../SKILL.md) 模式 D。

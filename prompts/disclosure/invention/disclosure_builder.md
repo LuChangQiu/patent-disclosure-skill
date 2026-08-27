@@ -125,6 +125,8 @@ Agent **落盘时**即采用上述命名，并在回复中写明路径，便于�
 
 - **行内公式**：全文统一 **`\(...\)`** 或 **`$...$`** 二选一，**不得混用**。
 - **块级公式**：全文统一 **`\[...\]`** 或 **`$$...$$`** 二选一，**不得混用**。
+- **禁止普通括号冒充行内公式**：含 `\mathrm`、`\,`、`_{` 的式子必须写成 `\(M_{\mathrm{total}}\)`，**禁止**写成 `(M_{\mathrm{total}})`。后者 Word 当纯文本（常带拼写红线）。Markdown 预览会把 `\(` 显示成 `(`，**不得**据此删掉反斜杠。
+- **出 Word 的稿**：必须是**当次交付的时间戳定稿 md**。改正分隔符后须重跑 `mermaid_render.py` / `md_to_docx.py`。**禁止**用未改正的 `draft.md` 出交付 `.docx`（`mermaid_render` 遇普通括号包 LaTeX 会写 md、跳过 Word，见 `LATEX_DELIM:`）。定稿前可跑 `python tools/shared/latex_delimiters.py -i <定稿.md>`。
 - 比较符优先写 `\leq`、`\geq`（定稿工具可兼容 `\le`/`\ge`，正文仍推荐 `\leq`/`\geq`）。
 - 块级公式尽量 **单行写完**；需编号时用 `\tag{1}` 或正文写「式 (1)」，**全文择一**并保持体例一致。
 - 逻辑连接词（「且」「或」）优先写在公式 **外** 的中文叙述中；若必须写入公式内，用 `\land`/`\lor`，**避免** `\text{且}` 等复杂文本命令（定稿渲染易失败）。
@@ -150,7 +152,7 @@ Agent **落盘时**即采用上述命名，并在回复中写明路径，便于�
 
 （mermaid 出图：Playwright + 内置 `tools/shared/vendor/mermaid.min.js`，与查新共用浏览器，见 `tools/shared/browser.py`。**禁止**为出图执行 `npm` / `npx` / `playwright install chromium`（除非 `--probe` 显示本机无 Chrome/Edge 且无自带 Chromium）。无可用浏览器时**仍须交付 .md**（围栏保留）；Word 可生成但框图可能为代码块，告知用户补浏览器后可重跑本脚本。）
 
-**判读（stderr ≠ 失败）**：以 **退出码 0** 和机读前缀为准：`MERMAID: ok=`、`DOCX: ok=1`、`MATH:`、`omml_text_fallback=`。PowerShell 红字 / `NativeCommandError` / 中文乱码 **不是**失败；**禁止**因此重跑安装或认定 Word 未生成。`DOCX: ok=0` 才按终端里的手动 `md_to_docx.py` 命令补做。
+**判读（stderr ≠ 失败）**：以 **退出码 0** 和机读前缀为准：`MERMAID: ok=`、`DOCX: ok=1`、`MATH:`、`omml_text_fallback=`、`LATEX_DELIM:`。PowerShell 红字 / `NativeCommandError` / 中文乱码 **不是**失败；**禁止**因此重跑安装或认定 Word 未生成。`DOCX: ok=0` 才按终端里的手动 `md_to_docx.py` 命令补做。`LATEX_DELIM: hits=` 大于 0 或 `DOCX: ok=0 reason=latex_delim`：**Word 未生成**，须把行内公式改成 `\(...\)` 后对**已写出的时间戳 md**重跑，禁止用未改正的 `draft.md` 出交付 Word。
 
 ### OMML 失败后的公式 PNG（可选，默认关）
 

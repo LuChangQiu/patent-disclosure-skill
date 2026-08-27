@@ -12,6 +12,8 @@
 
 **降级**：某一围栏生图失败时**不中断**：该处**保留原** `` ```mermaid`` … `` ``` `` 围栏；其余块照常渲染。仍写出 .md 并**照常尝试** ``md_to_docx.py``（Word 中失败块以代码块形式出现）。无可用浏览器时同样保留围栏，不阻塞 Markdown 交付。
 
+**行内公式分隔符**：出 Word 前用 ``latex_delimiters.py`` 扫描。若写成 ``(M_{\\mathrm{total}})`` 这类普通括号包 LaTeX，则 **仍写 .md、跳过 Word**（``LATEX_DELIM: hits=`` / ``DOCX: ok=0 reason=latex_delim``）。须改成 ``\\(...\\)`` 后对**当次时间戳 md**重跑，禁止用未改正的 ``draft.md`` 出交付 Word。
+
 **清晰度**：默认视口 1400×1050、``device_scale_factor=2``。可用 ``--mmdc-scale`` / ``--mmdc-width`` / ``--mmdc-height``（历史参数名，语义不变）。
 
 用法：
@@ -35,6 +37,7 @@ if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
 
 from browser import install_chromium_hint, install_package_hint, launch_chromium, playwright_installed
+from latex_delimiters import find_bare_paren_latex, format_hits_report
 from stdio_utf8 import ensure_utf8_stdio, run as run_utf8
 
 _MERMAID_JS = _HERE / "vendor" / "mermaid.min.js"
@@ -567,6 +570,17 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.no_docx:
         print("DOCX: skip=1", file=sys.stderr)
+        return 0
+
+    delim_hits = find_bare_paren_latex(new_md)
+    if delim_hits:
+        print(format_hits_report(delim_hits), file=sys.stderr)
+        print("DOCX: ok=0 reason=latex_delim", file=sys.stderr)
+        print(
+            "警告：已跳过 Word。改正行内公式分隔符后，对上述已写出的定稿 .md 重跑本脚本"
+            "（或 md_to_docx.py），不要用未改正的草稿出交付 .docx。",
+            file=sys.stderr,
+        )
         return 0
 
     docx_path = (

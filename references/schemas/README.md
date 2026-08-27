@@ -11,6 +11,7 @@
 | `structure_lineart_compose.schema.yaml` | 实用结构线稿按件拼装 | 每件一个子 SVG，总图相对引用；粒度止于件号；crop / 单件图 / 占位框 | 一般不用 |
 | `evolution_backlog.schema.yaml` | 技能进化清单（模式 C） | 旁路产出 `outputs/evolution/EVOL-*.md`；人审前不改 prompts | 不用 |
 | `oa_case.schema.yaml` | 审查答复案例（模式 D） | 旁路：脱敏入库 Obs / 系统文档目录 `…/oa/cases` + sqlite-vec；答复先检索 | 可同库 `oa/cases/` |
+| `oa_playbook.schema.yaml` | 审查答复经验手册（模式 D） | 实务书蒸馏到 `oa/playbooks/`；不进案例向量 | 可同库 `oa/playbooks/` |
 
 填写指令：`prompts/shared/fill_structure_schema.md`、`fill_appearance_schema.md`（填表末步写出 **`figure_plan.yaml`**，含跨图核对与 `relates_to`）；线稿公共合同 **`prompts/shared/image_gen.md`**；外观见 **`prompts/shared/design_lineart_assist.md`**；实用新型见 **`prompts/shared/structure_lineart_assist.md`** + **`structure_lineart_compose.md`**。  
 **禁止**在 disclosure 与 reader 各维护一份字段定义。  

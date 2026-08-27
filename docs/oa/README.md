@@ -19,6 +19,7 @@
   cases/history/   # status=history，可检索
   pending/         # 待答复
   drafts/          # 人审草稿
+  playbooks/       # 实务书蒸馏手册（不进案例检索）
 ```
 
 刷新：`python tools/oa/refresh_vault.py`  

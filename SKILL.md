@@ -1,9 +1,9 @@
 ---
 name: patent-disclosure-skill
 description: "中国专利技能：专利点挖掘与交底书（发明/实用/外观）编写，通俗解读专利，嗅探政策动向，辅助审查答复。| China patents skill: mine patent points and draft disclosures (invention / utility model / design), plain-language reading, policy sniffing, assisted office-action response."
-version: "3.7.0"
+version: "3.8.1"
 user-invocable: true
-argument-hint: "[可选：项目路径 / 专利号或 PDF / 政策动向嗅探或技能进化 / 审查答复或案例入库]"
+argument-hint: "[可选：项目路径 / 专利号或 PDF / 政策动向嗅探或技能进化 / 审查答复、案例入库或实务书蒸馏]"
 allowed-tools: Read, Write, Edit, Grep, Glob, WebSearch, Bash
 ---
 
@@ -16,7 +16,7 @@ allowed-tools: Read, Write, Edit, Grep, Glob, WebSearch, Bash
 | **A · 交底书编写** | 挖专利点 → 查新 → 成稿 → 迭代 | `prompts/disclosure/`（类型子目录见下） |
 | **B · 专利通俗解读** | 公开号 / PDF / 全文 → 通俗笔记 + 图谱 | `prompts/reader/patent_plain_reader.md` |
 | **C · 技能进化旁路** | 政策/审查动向嗅探 → 带时间戳清单 → **人审后**才改技能 | `prompts/evolution/`（须显式触发） |
-| **D · 审查答复辅助** | 案例脱敏入库；通知书 → 标签+向量检索 → 答复草稿 | `prompts/oa/`（须显式触发；须人审） |
+| **D · 审查答复辅助** | 案例脱敏入库；实务书→经验手册；通知书 → 检索+手册 → 自动出草稿（可换策略迭代） | `prompts/oa/`（须显式触发；草稿须复核后递交） |
 
 提供**专利号或专利全文/PDF**且意图为「读懂」时 → **优先模式 B**，**不**默认跑交底书 Step 1–8。  
 **禁止**因写交底/读专利自动进入模式 C/D。
@@ -45,7 +45,7 @@ docs/oa/                     # 模式 D：embedding 配置模板种子（运行�
 
 ## 环境与约定
 
-- **脚本判读（尤其 Windows）**：stderr 有字 **不等于** 失败。以 **退出码 0** 和机读前缀为准：`EPUB_HITS_JSON:` / `EPUB_MERGE:`、`PROBE:` / `BROWSER:`、`MERMAID:` / `DOCX:` / `MATH:` / `omml_text_fallback=`、`CAD_VENV:` / `SVG_HTTP:` / `PIP_INDEX`。PowerShell 可能把 stderr 标成 `NativeCommandError` 或乱码；**禁止**因此重跑安装、或把查新降级 WebSearch。勿用 `2>&1` 把 JSON 混进错误流。
+- **脚本判读（尤其 Windows）**：stderr 有字 **不等于** 失败。以 **退出码 0** 和机读前缀为准：`EPUB_HITS_JSON:` / `EPUB_MERGE:`、`PROBE:` / `BROWSER:`、`MERMAID:` / `DOCX:` / `MATH:` / `omml_text_fallback=`、`CAD_VENV:` / `SVG_HTTP:` / `PIP_INDEX` / `PLAYBOOK:`。PowerShell 可能把 stderr 标成 `NativeCommandError` 或乱码；**禁止**因此重跑安装、或把查新降级 WebSearch。勿用 `2>&1` 把 JSON 混进错误流。
 - **专利类型**：未显式指定时交底**默认发明**；材料更偏实用/外观时在汇总或预览阶段**反问**（见 `disclosure/intake.md`）。
 - **交底书图示**：
   - **发明**：3.2 / 3.4 用 fenced **mermaid** → `tools/shared/mermaid_render.py`（Playwright + 内置 mermaid.js，见 `tools/shared/browser.py`）。流程图步骤号须写入可见标签：`S1["S1 …"]`（id 本身不出图）。成文须让**标题领域对象**贯穿 3.1 / 框图 / 流程 / 实施例；用词贴合话题背景，话题错位的抽象行话换成领域表述（发明 `disclosure_builder.md` §7.9）。
@@ -56,7 +56,7 @@ docs/oa/                     # 模式 D：embedding 配置模板种子（运行�
 - **实用结构线稿（必做）**：填表后 **`Read`** `shared/image_gen.md` + `shared/structure_lineart_assist.md`（轮廓后 **`Read`** `shared/structure_lineart_compose.md`）。不问用户。对齐 `structure_schema.parts`；轮廓按件拼装为子 SVG + 总图相对引用，再叠序号。推荐：`structure_lineart_compose.py` 每件落 `parts/{视}_{id}.svg`，总图 `<g id="part-N">` 引用子文件（不要整图 base64+clip），大模型只定位并把归一化锚点持久化到 `structure_callout_anchors.yaml`（含 `base_svg_path`），再由 `structure_callout_overlay.py` **注入**件号组；**叠标后须读图按部件名称核对引出线**（改 YAML 重叠标，最多 2 轮；禁止含件号二次生图或自创件号）。CAD 不得当线稿入文。**勿**与外观 `design_lineart_*` 混用。
 - **解读 + Obsidian**：强烈推荐配置库；见 **`docs/obsidian-setup-guide.md`**。
 - **技能进化 / 动向嗅探（须显式触发）**：用户点名后走模式 C（政策/审查动向嗅探 → 清单）；清单含 **观点↔信源 URL 表**；未人审确认前**不**改技能正文。
-- **审查答复（须显式触发）**：用户点名后走模式 D；向量模型**可选**（可 `skip-vector`，中途再 enable + 重建）；推荐智谱 `embedding-3`；标签检索始终可用，向量超时则回退。
+- **审查答复（须显式触发）**：用户点名后走模式 D；向量模型**可选**（可 `skip-vector`，中途再 enable + 重建）；推荐智谱 `embedding-3`；标签检索始终可用，向量超时则回退。实务书蒸馏：只要**本地路径**，先预读再外挂 book-to-skill，手册进 `oa/playbooks/`、不进案例检索。
 
 ---
 
@@ -66,7 +66,7 @@ docs/oa/                     # 模式 D：embedding 配置模板种子（运行�
 - **通俗解读**：读专利、公开号 / PDF 且目标为理解；`/patent-read`、`/读专利`。
 - **交底书迭代**：已有交底上补材料/纠错 → `disclosure/iteration_context.md` → `merger` / `correction_handler`；另存时间戳稿。
 - **技能进化旁路**：技能进化、政策/审查动向嗅探、政策雷达、审查政策更新、自进化、`/patent-evolve`、`/技能进化` → **仅此时**进入模式 C。
-- **审查答复 / 案例入库**：审查意见、意见陈述、OA、补正通知书、案例入库、`/oa`、`/审查答复` → **仅此时**进入模式 D。
+- **审查答复 / 案例入库 / 经验手册**：审查意见、意见陈述、OA、补正通知书、案例入库、书籍蒸馏、实务书、`/oa`、`/审查答复` → **仅此时**进入模式 D。
 
 ---
 
@@ -85,7 +85,7 @@ docs/oa/                     # 模式 D：embedding 配置模板种子（运行�
 | 专利通俗解读 | **`Read`** `reader/patent_plain_reader.md`；实用/外观另 Read `reader/type_hooks.md` + `shared/fill_*` |
 | 解读取 PDF / 入库 | `tools/patent_reader/extract/fetch_patent_pdf.py`；`…/vault/write_patent_obsidian_note.py` 等（见 `tools/patent_reader/README.md`） |
 | 政策/审查动向嗅探 | **`Read`** `evolution/intake.md` → `research.md`（WebSearch + 官网抓取）→ `emit_backlog.md`；确认后 `apply_after_confirm.md` |
-| 审查答复 / 案例库 | **`Read`** `oa/intake.md`；PDF 用 `oa/pdf_text.py` / `search_cases.py --pdf` / `ingest_case.py --pdf`；入库 `oa/ingest_case.md`；答复 `oa/respond_office_action.md`；配置 `oa/config.py` |
+| 审查答复 / 案例库 | **`Read`** `oa/intake.md`；PDF 用 `oa/pdf_text.py` / `search_cases.py --pdf` / `ingest_case.py --pdf`；入库 `oa/ingest_case.md`；手册 `oa/ingest_playbook.md` + `ingest_playbook.py`；答复 `oa/respond_office_action.md`；配置 `oa/config.py` |
 
 ---
 
@@ -140,10 +140,11 @@ docs/oa/                     # 模式 D：embedding 配置模板种子（运行�
 | 录入 | `prompts/oa/intake.md` |
 | 向量对话配置 | `prompts/oa/configure_embedding.md`（问答 → set/secrets → selftest） |
 | 脱敏入库 | `prompts/oa/ingest_case.md` + `tools/oa/ingest_case.py`（支持 `--pdf`） |
-| 答复草稿 | `prompts/oa/respond_office_action.md` + `tools/oa/search_cases.py --pdf` |
+| 经验手册 | `prompts/oa/ingest_playbook.md` + `tools/oa/ingest_playbook.py`（先 peek；本地路径；`oa/playbooks/`） |
+| 答复草稿 | `prompts/oa/respond_office_action.md` + `tools/oa/search_cases.py --pdf`（可 Read 手册 cheatsheet） |
 | PDF 抽取 | `tools/oa/pdf_text.py`（pymupdf；优先路径，禁止让用户手贴） |
 | 案例模板 | `prompts/oa/case_note_template.md` |
-| 合同 / 配置 | `references/schemas/oa_case.schema.yaml`；运行时 `{Documents}/…/oa/embedding.config.yaml`（仓库模板 `docs/oa/`） |
+| 合同 / 配置 | `references/schemas/oa_case.schema.yaml`、`oa_playbook.schema.yaml`；运行时 `{Documents}/…/oa/embedding.config.yaml`（仓库模板 `docs/oa/`） |
 
 ---
 
@@ -194,11 +195,12 @@ docs/oa/                     # 模式 D：embedding 配置模板种子（运行�
 1. **`Read`** `oa/guardrails.md` → `intake.md`  
 2. **首次 / 改向量**：`Read` `oa/configure_embedding.md` → 对话问清（可跳过 / 预设 / 自定义 URL+模型+Key）→ `config.py set … --api-key …`（默认 **selftest**）→ 需重建则人确认后 `rebuild_vectors.py --confirm`  
 3. **入库**：`ingest_case.py`（支持 `--pdf`）；笔记进 `oa/cases/history/`（或 pending/drafts）；自动刷新 `_OA索引` / Canvas / Bases；无向量时仍写笔记 + 元数据  
-4. **答复**：`search_cases.py --pdf …`（标签优先过滤；向量可用则 Top-K，失败/超时回退标签，展示 `retrieval_mode` + diff）→ 策略勾选 → 草稿 → 人审  
-5. **仅刷新 Obs**：`python tools/oa/refresh_vault.py` 
+4. **经验手册**：`ingest_playbook.py peek` → 判断审查答复相关且值得蒸馏（不合适则拒绝，除非用户强烈要求）→ `ensure-skill` 自动安装 [book-to-skill](https://github.com/virgiliojr94/book-to-skill) → 按该 skill 蒸馏本地书 → `ingest` 到 `oa/playbooks/`（**不进**案例向量）  
+5. **答复**：`search_cases.py --pdf …` → `ingest_playbook.py list` 并按缺陷 Read cheatsheet → **同点多策略相对分（分差≥15 且过保范围门槛才改缩权；禁止授权率、禁止裸 argmax）** → 出一份草稿 → 事后短摘要；用户可换策略另存新稿  
+6. **仅刷新 Obs**：`python tools/oa/refresh_vault.py` 
 
 依赖：`pip install -r tools/oa/requirements-oa.txt`。  
-**与 A/B/C 互斥**：不写交底书主流程；草稿须复核后递交。
+**与 A/B/C 互斥**：不写交底书主流程；草稿须复核后递交（写稿前不中断勾选；换策略则另存新稿）。
 
 ---
 
@@ -217,7 +219,7 @@ docs/oa/                     # 模式 D：embedding 配置模板种子（运行�
 □ Step 3–4 / Step 7 已 Read 对应类型子目录 md（非发明套用实用/外观）
 □ 查新 cnipa 已带与案件一致的 --type；abstract 必用
 □ 发明成文：3.1 已铺标题对象与领域术语；框图/流程/实施例贯穿标题实词；用词贴合话题背景（错位行话已换成领域表述，非靠定义保留）；3.3 独立模块、3.4 逐项对应 S 步；第五章为可实施机制
-□ 发明含公式：已写 formula_plan（范式∈references/formulas）且可算数值例；禁装饰音；已 check_formula_plan 或等价自检
+□ 发明含公式：已写 formula_plan（范式∈references/formulas）且可算数值例；禁装饰音；已 check_formula_plan 或等价自检；行内为 \(...\)/$...$ 而非 (M_{\mathrm{…}})；latex_delimiters 无 hits；改正后已用时间戳 md 重出 Word
 □ 实用/外观已走 schema 填表（shared）并写出 figure_plan（含 relevance/quality 与必要 relates_to），未看图直接长文；实用只嵌入文线稿；外观 md+docx 同时嵌实拍与线稿；CAD 未入文
 □ Step 2/补材料已 cad_scan：遇 STEP **未**中断成文、**未**装依赖；交底落盘后才反问；仅原生 CAD 则交付回复末尾提示导出 STEP；未确认不开 step_to_views；确认后先 cad_venv 探测，已就绪则跳过 bootstrap；CAD 投影只当材料
 □ 外观线稿：已 Read image_gen.md + design_lineart_assist；已有合格线稿则未再生成，否则图生图或先描述再文生图；实拍与线稿均已入 md 与 Word；CAD 未当线稿入文
@@ -226,6 +228,6 @@ docs/oa/                     # 模式 D：embedding 配置模板种子（运行�
 □ 解读实用/外观：公开号种类码或 patent_type.py / fetch 状态已判别类型，并 Read type_hooks + 共用 schema（用户未口头声明也可）
 □ 模式 C：已显式触发；清单含观点↔URL 主表；未确认前未改技能；确认后才 apply
 □ 交底定稿交付：已按 evolution/soft_nudge 判断是否加低频一句（未每次必出、未写入正文）
-□ 模式 D：已显式触发；向量可选已反问（可跳过）；PDF 已自动抽取；入库已脱敏；检索展示 retrieval_mode；向量失败已回退标签；需重建时已人确认；草稿已人审提示
+□ 模式 D：已显式触发；向量可选已反问（可跳过）；PDF 已自动抽取；入库已脱敏；检索展示 retrieval_mode；向量失败已回退标签；需重建时已人确认；手册先预读再蒸馏且未进案例向量；答复同点多策略用相对分+保范围门槛（非授权率、非裸 argmax），事后摘要且可换策略另存新稿
 □ 路径使用 prompts/disclosure|reader|shared|evolution|oa 与 tools/crawl|shared|oa|patent_reader/{extract,analyze,vault,shared}
 ```

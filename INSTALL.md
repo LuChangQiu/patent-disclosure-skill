@@ -159,7 +159,7 @@ python tools/oa/refresh_vault.py   # 刷新 oa 索引 / Bases / 关联 Canvas
 python tools/oa/search_cases.py --query "创造性 区别特征" --defect inventiveness --top-k 5
 ```
 
-Obsidian 案例落在 `{vault}/oa/cases/history/`（另有 `pending/`、`drafts/`）。与主依赖**独立**。细则见 `prompts/oa/`、`tools/oa/README.md`、[SKILL.md](SKILL.md) 模式 D。
+Obsidian 案例落在 `{vault}/oa/cases/history/`（另有 `pending/`、`drafts/`、`playbooks/`）。与主依赖**独立**。细则见 `prompts/oa/`、`tools/oa/README.md`、[SKILL.md](SKILL.md) 模式 D。
 
 ## 强烈建议：专利通俗解读 + Obsidian 库
 
