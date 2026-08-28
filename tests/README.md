@@ -35,8 +35,11 @@ python -m unittest discover -s tests/shared -t . -p "test_*.py"
 
 # 单文件
 python tests/crawl/test_cnipa_epub_crawler.py
+python tests/crawl/test_cnipa_epub_portfolio.py
 python tests/patent_reader/test_schema_vault.py
 ```
+
+`test_cnipa_epub_portfolio.py` 覆盖高级查询发明人字段、列表/公布卡片著录解析、官方分页与完整性门禁，以及按申请人过滤同名发明人。
 
 联调国知局实网（非 unittest 用例，脚本入口）：
 

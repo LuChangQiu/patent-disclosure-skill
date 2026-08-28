@@ -2,7 +2,7 @@
 
 # 中国专利.skill
 
-> 专利点挖掘与交底书（发明/实用/外观）编写，通俗解读专利，嗅探政策动向，辅助审查答复。
+> 按发明人/申请人检索公开专利清单，专利点挖掘与交底书（发明/实用/外观）编写，通俗解读专利，嗅探政策动向，辅助审查答复。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](https://www.python.org/)
@@ -101,6 +101,7 @@
 ### 专利交底书编写
 
 支持 **发明**、**实用新型**、**外观设计** 三种专利类型（未指定时默认发明；材料偏结构/外观时可反问切换）。
+面向用户的专利清单、交底书、解读和审查答复默认使用**简体中文**；用户明确要求时可切换其他语言，脚本机读字段保持兼容。
 
 <!-- 使用 HTML 表格：避免 GitHub 管道表把左列挤窄 -->
 <table>
@@ -112,6 +113,7 @@
 <tr><th align="left" nowrap width="1%">能力</th><th align="left">说明</th></tr>
 </thead>
 <tbody>
+<tr><td nowrap width="1%"><strong>个人专利检索</strong></td><td>使用国知局高级查询“发明（设计）人”字段，分别遍历所选公布公告类型的全部结果页，并用一个或多个申请人过滤同名记录；分页不完整时明确失败，不把部分结果称为全部（<code>cnipa_epub_portfolio.py</code>）</td></tr>
 <tr><td nowrap width="1%"><strong>专利类型</strong></td><td>发明 / 实用新型 / 外观设计<strong>分模板成文</strong>；实用与外观先填 Schema，再写 <code>figure_plan.yaml</code> 排序入文图（成文不扫全 assets 临场挑图）</td></tr>
 <tr><td nowrap width="1%"><strong>项目扫描</strong></td><td>按优先级读文档 / 代码；<code>.docx</code> / <code>.pptx</code> 先转 Markdown 再扫；可选扫描 <code>.step</code>/<code>.stp</code> 与原生 CAD（<strong>默认不解析</strong>，遇 STEP 成文不中断，交底落盘后再问）（<code>project_scan.md</code>）</td></tr>
 <tr><td nowrap width="1%"><strong>外观线稿</strong></td><td>成文前选用或生成产品线稿（已有合格线稿优先，否则图生图 / 文生图）；与干净实拍一并写入 Markdown 和 Word（<code>design_lineart_assist.md</code>）</td></tr>
@@ -125,6 +127,8 @@
 </table>
 
 怎么开口：自然语言即可（专利挖掘、交底书、查新等），或 `/交底书`、`/patent-disclosure-skill`；尽量带上**项目路径或技术主题**，并点明类型（未指定默认**发明**）。
+
+检索个人公开专利时，提供“发明人姓名 + 当前及历史申请主体”，例如“检索某发明人在申请主体一、申请主体二名下的公开专利”。该模式只统计已公开/公告记录，不等于单位内部实际提交总数。
 
 | 类型 | 典型场景 | 触发示例 |
 |------|----------|----------|

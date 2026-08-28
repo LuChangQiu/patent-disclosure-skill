@@ -1,13 +1,13 @@
 ---
 name: patent-disclosure-skill
-description: "中国专利技能：专利点挖掘与交底书（发明/实用/外观）编写，通俗解读专利，嗅探政策动向，辅助审查答复。| China patents skill: mine patent points and draft disclosures (invention / utility model / design), plain-language reading, policy sniffing, assisted office-action response."
+description: "中国专利技能：按发明人/申请人检索公开专利清单，挖掘专利点与编写交底书（发明/实用/外观），通俗解读专利，嗅探政策动向，辅助审查答复。| China patents skill: search published portfolios by inventor/applicant, mine patent points and draft disclosures, explain patents, track policy, and assist office-action responses."
 version: "3.9.0"
 user-invocable: true
-argument-hint: "[可选：项目路径 / 专利号或 PDF / 政策动向嗅探或技能进化 / 审查答复、案例入库或实务书蒸馏]"
+argument-hint: "[可选：项目路径 / 个人专利检索 / 专利号或 PDF / 政策动向嗅探或技能进化 / 审查答复、案例入库或实务书蒸馏]"
 allowed-tools: Read, Write, Edit, Grep, Glob, WebSearch, Bash
 ---
 
-# 中国专利技能 · 交底编写 · 通俗解读 · 政策/审查动向嗅探 · 审查答复
+# 中国专利技能 · 个人专利检索 · 交底编写 · 通俗解读 · 政策动向 · 审查答复
 
 本技能**单包模块化**：分步指令在 **`prompts/`**，执行前须 **`Read`** 对应文件。`SKILL.md` 只做路由。
 
@@ -17,6 +17,7 @@ allowed-tools: Read, Write, Edit, Grep, Glob, WebSearch, Bash
 | **B · 专利通俗解读** | 公开号 / PDF / 全文 → 通俗笔记 + 图谱 | `prompts/reader/patent_plain_reader.md` |
 | **C · 技能进化旁路** | 政策/审查动向嗅探 → 带时间戳清单 → **人审后**才改技能 | `prompts/evolution/`（须显式触发） |
 | **D · 审查答复辅助** | 案例脱敏入库；实务书→经验手册；通知书 → 检索+手册 → 自动出草稿（可换策略迭代） | `prompts/oa/`（须显式触发；草稿须复核后递交） |
+| **E · 个人公开专利检索** | 发明人姓名 → 全量翻页 → 申请人过滤同名 → 公开清单 | `prompts/search/patent_portfolio_search.md` |
 
 提供**专利号或专利全文/PDF**且意图为「读懂」时 → **优先模式 B**，**不**默认跑交底书 Step 1–8。  
 **禁止**因写交底/读专利自动进入模式 C/D。
@@ -32,6 +33,7 @@ prompts/reader/              # 通俗解读 + type_hooks
 prompts/shared/              # 写读共用：Structure / Appearance 填表 + figure_plan + 线稿（image_gen）
 prompts/evolution/           # 模式 C：政策/审查动向嗅探 · 进化清单（旁路，须显式触发）
 prompts/oa/                  # 模式 D：审查答复 / 案例入库（旁路，须显式触发）
+prompts/search/              # 模式 E：个人公开专利清单检索
 references/schemas/          # structure / appearance / figure_plan / formula_plan / lineart / evolution / oa_case
 references/formulas/         # 发明公式推荐范式（paradigms.yaml，可外挂扩展）
 tools/crawl/                 # 国知局等爬取
@@ -45,6 +47,7 @@ docs/oa/                     # 模式 D：embedding 配置模板种子（运行�
 
 ## 环境与约定
 
+- **默认语言**：中国专利相关的检索清单、交底书、解读和审查答复默认使用简体中文；仅当用户明确要求时改用其他语言。脚本机读前缀、JSON 字段名和内部状态码保持稳定，但面向用户的表头、状态、说明和结论须译为中文。
 - **脚本判读（尤其 Windows）**：stderr 有字 **不等于** 失败。以 **退出码 0** 和机读前缀为准：`EPUB_HITS_JSON:` / `EPUB_MERGE:` / `EPUB_CLASS_HINT:`、`PROBE:` / `BROWSER:`、`MERMAID:` / `DOCX:` / `MATH:` / `omml_text_fallback=`、`CAD_VENV:` / `SVG_HTTP:` / `PIP_INDEX` / `PLAYBOOK:`。PowerShell 可能把 stderr 标成 `NativeCommandError` 或乱码；**禁止**因此重跑安装、或把查新降级 WebSearch。勿用 `2>&1` 把 JSON 混进错误流。
 - **专利类型**：未显式指定时交底**默认发明**；材料更偏实用/外观时在汇总或预览阶段**反问**（见 `disclosure/intake.md`）。
 - **交底书图示**：
@@ -57,6 +60,7 @@ docs/oa/                     # 模式 D：embedding 配置模板种子（运行�
 - **解读 + Obsidian**：强烈推荐配置库；见 **`docs/obsidian-setup-guide.md`**。
 - **技能进化 / 动向嗅探（须显式触发）**：用户点名后走模式 C（政策/审查动向嗅探 → 清单）；清单含 **观点↔信源 URL 表**；未人审确认前**不**改技能正文。
 - **审查答复（须显式触发）**：用户点名后走模式 D；向量模型**可选**（可 `skip-vector`，中途再 enable + 重建）；推荐智谱 `embedding-3`；标签检索始终可用，向量超时则回退。实务书蒸馏：只要**本地路径**，先预读再外挂 book-to-skill，手册进 `oa/playbooks/`、不进案例检索。
+- **个人公开专利检索**：按发明人召回、申请人过滤并遍历全部结果页；分页未完成时禁止称为“全部”。公开记录数不等于实际提交总数。
 
 ---
 
@@ -67,6 +71,7 @@ docs/oa/                     # 模式 D：embedding 配置模板种子（运行�
 - **交底书迭代**：已有交底上补材料/纠错 → `disclosure/iteration_context.md` → `merger` / `correction_handler`；另存时间戳稿。
 - **技能进化旁路**：技能进化、政策/审查动向嗅探、政策雷达、审查政策更新、自进化、`/patent-evolve`、`/技能进化` → **仅此时**进入模式 C。
 - **审查答复 / 案例入库 / 经验手册**：审查意见、意见陈述、OA、补正通知书、案例入库、书籍蒸馏、实务书、`/oa`、`/审查答复` → **仅此时**进入模式 D。
+- **个人专利清单**：检索我/某人发表或申请的专利、按发明人/申请人找全部专利 → 模式 E；不得用技术主题查新的少量命中代替全量清单。
 
 ---
 
@@ -81,6 +86,7 @@ docs/oa/                     # 模式 D：embedding 配置模板种子（运行�
 | 外观线稿（必做） | `prompts/shared/design_lineart_assist.md`；门禁 `design_lineart_gate.py` |
 | 实用结构线稿（必做） | `prompts/shared/structure_lineart_assist.md` + `structure_lineart_compose.md`；门禁 `structure_lineart_gate.py`；拼装 `structure_lineart_compose.py`；锚点 `structure_callout_anchors.yaml`；叠标 `structure_callout_overlay.py` |
 | 联网查新 | **`Read`** `disclosure/prior_art_search.md`。优先 **`cnipa_epub_search.py --type …`**（与 intake 一致）；**两段式**：关键词 → `EPUB_CLASS_HINT` / `ipc_codes`·`loc_codes` → `--class` 第二轮（发明/实用 IPC，外观 **LOC**）；1.1 优先第二轮；不足 4 条则同分类号回补第一轮，仍少可仅分类号/相邻号再查，禁止编造凑数。Google Patents `CPC=` 仅可选补充，被墙即跳过。`abstract` 必用；公布站失败再 WebSearch。见 `patent_type_search.yaml` |
+| 个人公开专利清单 | **`Read`** `search/patent_portfolio_search.md`。优先 `tools/crawl/cnipa_epub_portfolio.py --inventor … --applicant …`；检查 `complete`、分页数和同名归属 |
 | 交底定稿 | 发明：`tools/shared/mermaid_render.py` → md+docx；实用/外观：按各类型 builder（外观 md+docx 须同时嵌实拍与线稿） |
 | 专利通俗解读 | **`Read`** `reader/patent_plain_reader.md`；实用/外观另 Read `reader/type_hooks.md` + `shared/fill_*` |
 | 解读取 PDF / 入库 | `tools/patent_reader/extract/fetch_patent_pdf.py`；`…/vault/write_patent_obsidian_note.py` 等（见 `tools/patent_reader/README.md`） |
@@ -146,6 +152,14 @@ docs/oa/                     # 模式 D：embedding 配置模板种子（运行�
 | 案例模板 | `prompts/oa/case_note_template.md` |
 | 合同 / 配置 | `references/schemas/oa_case.schema.yaml`、`oa_playbook.schema.yaml`；运行时 `{Documents}/…/oa/embedding.config.yaml`（仓库模板 `docs/oa/`） |
 
+### 个人公开专利检索（模式 E）
+
+| 步骤 | 文件 / 工具 |
+|------|-------------|
+| 检索与归属规则 | `prompts/search/patent_portfolio_search.md` |
+| 官方全量检索 | `tools/crawl/cnipa_epub_portfolio.py` |
+| 通用查新检索（非替代） | `tools/crawl/cnipa_epub_search.py` |
+
 ---
 
 ## 模式 A · 交底书主流程
@@ -200,7 +214,21 @@ docs/oa/                     # 模式 D：embedding 配置模板种子（运行�
 6. **仅刷新 Obs**：`python tools/oa/refresh_vault.py` 
 
 依赖：`pip install -r tools/oa/requirements-oa.txt`。  
-**与 A/B/C 互斥**：不写交底书主流程；草稿须复核后递交（写稿前不中断勾选；换策略则另存新稿）。
+**与 A/B/C/E 互斥**：不写交底书主流程；草稿须复核后递交（写稿前不中断勾选；换策略则另存新稿）。
+
+---
+
+## 模式 E · 个人公开专利检索
+
+1. **`Read`** `search/patent_portfolio_search.md`。
+2. 收集发明人姓名及已知申请主体；历史单位分别作为多个 `--applicant`，不只保留当前单位。
+3. 运行 `cnipa_epub_portfolio.py`；它必须使用高级查询页 `#e72`“发明（设计）人”字段，并分别遍历所选公布公告类型，禁止把姓名填入首页综合关键词框代替。
+4. 仅在 `complete: true` 时声明官方结果页已完整遍历；首个表单提交或任一分页失败均视为不完整。
+5. 按申请号去重，列明身份匹配依据；公开号或日期缺失时标注待补录，不猜测。
+6. 明确结果仅含已公开/公告记录，不能代表尚未公开的实际提交总数。
+7. 默认用简体中文输出清单、统计、完整性状态和范围说明；不得直接把英文 JSON 键或内部状态码作为面向用户的字段名或结论。
+
+**与模式 A 的区别**：模式 E 穷举发明人公开记录；模式 A Step 5 按技术主题查找现有技术。两者不能互相替代。
 
 ---
 
@@ -214,7 +242,7 @@ docs/oa/                     # 模式 D：embedding 配置模板种子（运行�
 ## Agent 自用工作流检查清单
 
 ```
-□ 已区分模式 A / B / C / D / 迭代，未混跑
+□ 已区分模式 A / B / C / D / E / 迭代，未混跑
 □ 交底未指定类型时已默认发明；材料偏实用/外观已按需反问
 □ Step 3–4 / Step 7 已 Read 对应类型子目录 md（非发明套用实用/外观）
 □ 查新 cnipa 已带与案件一致的 --type；两段式（关键词 → IPC/LOC → --class）；外观用 LOC；1.1 优先第二轮，不足 4 条已同分类号回补（仍少可仅分类号/相邻号，未编造凑数）；未粘贴合并大杂烩；GP 被墙已跳过；abstract 必用
@@ -229,5 +257,6 @@ docs/oa/                     # 模式 D：embedding 配置模板种子（运行�
 □ 模式 C：已显式触发；清单含观点↔URL 主表；未确认前未改技能；确认后才 apply
 □ 交底定稿交付：已按 evolution/soft_nudge 判断是否加低频一句（未每次必出、未写入正文）
 □ 模式 D：已显式触发；向量可选已反问（可跳过）；PDF 已自动抽取；入库已脱敏；检索展示 retrieval_mode；向量失败已回退标签；需重建时已人确认；手册先预读再蒸馏且未进案例向量；答复同点多策略用相对分+保范围门槛（非授权率、非裸 argmax），事后摘要且可换策略另存新稿
-□ 路径使用 prompts/disclosure|reader|shared|evolution|oa 与 tools/crawl|shared|oa|patent_reader/{extract,analyze,vault,shared}
+□ 模式 E：已遍历全部结果页；complete=true；按申请人过滤同名；已区分公开记录与实际提交
+□ 路径使用 prompts/disclosure|reader|shared|evolution|oa|search 与 tools/crawl|shared|oa|patent_reader/{extract,analyze,vault,shared}
 ```

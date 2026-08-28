@@ -127,7 +127,7 @@ python tools/shared/structure_lineart_compose.py --case-dir outputs/{案件}
 
 流程见 `prompts/shared/image_gen.md`、`design_lineart_assist.md`、`structure_lineart_assist.md`、`structure_lineart_compose.md`。结构线稿按 `parts` 写出子 SVG 再拼总图、再 overlay 件号，禁止自创件号。
 
-## 可选：国知局公布公告站抓取（Step 5 查新优先路径）
+## 可选：国知局公布公告站抓取（查新与个人公开专利清单）
 
 若需使用 **`tools/crawl/cnipa_epub_search.py`**（一步，推荐）或 **`tools/crawl/cnipa_epub_crawler.py`** / **`tools/crawl/cnipa_epub_parse.py`**（[epub.cnipa.gov.cn](http://epub.cnipa.gov.cn/)，见 `prompts/disclosure/prior_art_search.md`）：
 
@@ -137,7 +137,14 @@ python tools/shared/browser.py --probe
 # 仅当 probe 显示无 Chrome/Edge 且无自带 Chromium 时：
 # python -m playwright install chromium
 python tools/crawl/cnipa_epub_search.py --type utility_model 卡扣
+# 个人公开专利清单：全量翻页 + 多申请人过滤同名
+python tools/crawl/cnipa_epub_portfolio.py --inventor "发明人姓名" \
+  --applicant "申请主体一" \
+  --applicant "申请主体二" \
+  --type all
 ```
+
+个人清单命令输出 `EPUB_PORTFOLIO_JSON`。只有 `complete: true` 才表示结果页已完整遍历；退出码 `3` 表示获得了部分结果但分页不完整，禁止据此声称“全部”。
 
 **Windows 终端**：定稿 / 查新脚本会把 stdout、stderr 设为 UTF-8，子进程带 `PYTHONUTF8=1`。Agent **以退出码和机读前缀为准**（`EPUB_HITS_JSON:`、`PROBE:`、`MERMAID:`、`DOCX:`、`MATH:`）；stderr 有中文或 PowerShell `NativeCommandError` **不等于**失败。不必先 `chcp 65001`。若仍乱码，可设 **`PYTHONUTF8=1`**，且不要用 **`2>&1`** 把 JSON 混进错误流。
 
