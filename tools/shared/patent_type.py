@@ -208,16 +208,33 @@ def epub_checkbox_states(patent_type: str) -> dict[str, bool]:
     return dict(EPUB_TYPE_CHECKBOXES[t])
 
 
-def google_patents_websearch_query(keywords: str, patent_type: str) -> str:
-    """构造供 WebSearch / 浏览器使用的 Google Patents 倾向查询串（非官方 API）。"""
+def google_patents_websearch_query(
+    keywords: str,
+    patent_type: str,
+    class_codes: list[str] | None = None,
+) -> str:
+    """构造供 WebSearch / 浏览器使用的 Google Patents 倾向查询串（非官方 API）。
+
+    ``class_codes``：发明/实用用 ``CPC=B01J20/low``；外观把洛迦诺号当补充词（无稳定 loc 字段）。
+    外网不通时可跳过，不作为查新失败条件。
+    """
     t = normalize_patent_type(patent_type, default=TYPE_ALL)
     hint = GOOGLE_PATENTS_TYPE_HINT[t]
     parts = [keywords.strip()]
     extra = (hint.get("query_extra") or "").strip()
     if extra:
         parts.append(extra)
+    codes = [c.strip() for c in (class_codes or []) if c and str(c).strip()]
+    if t == TYPE_DESIGN:
+        parts.extend(codes[:3])
+    else:
+        for c in codes[:3]:
+            compact = re.sub(r"\s+", "", c)
+            m = re.match(r"^([A-HY]\d{2}[A-Z]\d+)", compact, re.I)
+            prefix = m.group(1) if m else compact
+            if prefix:
+                parts.append(f"CPC={prefix}/low")
     gp_type = (hint.get("gp_type") or "").strip()
-    # 在查询旁注释 type，便于 Agent 在 patents.google.com 左侧过滤器勾选
     q = " ".join(p for p in parts if p)
     if gp_type:
         q = f"{q} type:{gp_type}"

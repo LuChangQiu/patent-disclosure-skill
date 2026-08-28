@@ -1,7 +1,7 @@
 ---
 name: patent-disclosure-skill
 description: "中国专利技能：专利点挖掘与交底书（发明/实用/外观）编写，通俗解读专利，嗅探政策动向，辅助审查答复。| China patents skill: mine patent points and draft disclosures (invention / utility model / design), plain-language reading, policy sniffing, assisted office-action response."
-version: "3.8.1"
+version: "3.9.0"
 user-invocable: true
 argument-hint: "[可选：项目路径 / 专利号或 PDF / 政策动向嗅探或技能进化 / 审查答复、案例入库或实务书蒸馏]"
 allowed-tools: Read, Write, Edit, Grep, Glob, WebSearch, Bash
@@ -45,7 +45,7 @@ docs/oa/                     # 模式 D：embedding 配置模板种子（运行�
 
 ## 环境与约定
 
-- **脚本判读（尤其 Windows）**：stderr 有字 **不等于** 失败。以 **退出码 0** 和机读前缀为准：`EPUB_HITS_JSON:` / `EPUB_MERGE:`、`PROBE:` / `BROWSER:`、`MERMAID:` / `DOCX:` / `MATH:` / `omml_text_fallback=`、`CAD_VENV:` / `SVG_HTTP:` / `PIP_INDEX` / `PLAYBOOK:`。PowerShell 可能把 stderr 标成 `NativeCommandError` 或乱码；**禁止**因此重跑安装、或把查新降级 WebSearch。勿用 `2>&1` 把 JSON 混进错误流。
+- **脚本判读（尤其 Windows）**：stderr 有字 **不等于** 失败。以 **退出码 0** 和机读前缀为准：`EPUB_HITS_JSON:` / `EPUB_MERGE:` / `EPUB_CLASS_HINT:`、`PROBE:` / `BROWSER:`、`MERMAID:` / `DOCX:` / `MATH:` / `omml_text_fallback=`、`CAD_VENV:` / `SVG_HTTP:` / `PIP_INDEX` / `PLAYBOOK:`。PowerShell 可能把 stderr 标成 `NativeCommandError` 或乱码；**禁止**因此重跑安装、或把查新降级 WebSearch。勿用 `2>&1` 把 JSON 混进错误流。
 - **专利类型**：未显式指定时交底**默认发明**；材料更偏实用/外观时在汇总或预览阶段**反问**（见 `disclosure/intake.md`）。
 - **交底书图示**：
   - **发明**：3.2 / 3.4 用 fenced **mermaid** → `tools/shared/mermaid_render.py`（Playwright + 内置 mermaid.js，见 `tools/shared/browser.py`）。流程图步骤号须写入可见标签：`S1["S1 …"]`（id 本身不出图）。成文须让**标题领域对象**贯穿 3.1 / 框图 / 流程 / 实施例；用词贴合话题背景，话题错位的抽象行话换成领域表述（发明 `disclosure_builder.md` §7.9）。
@@ -80,7 +80,7 @@ docs/oa/                     # 模式 D：embedding 配置模板种子（运行�
 | 线稿规划（必做） | `prompts/shared/image_gen.md`；`tools/shared/image_gen.py`（existing / img2img / txt2img） |
 | 外观线稿（必做） | `prompts/shared/design_lineart_assist.md`；门禁 `design_lineart_gate.py` |
 | 实用结构线稿（必做） | `prompts/shared/structure_lineart_assist.md` + `structure_lineart_compose.md`；门禁 `structure_lineart_gate.py`；拼装 `structure_lineart_compose.py`；锚点 `structure_callout_anchors.yaml`；叠标 `structure_callout_overlay.py` |
-| 联网查新 | **`Read`** `disclosure/prior_art_search.md`。优先 **`tools/crawl/cnipa_epub_search.py --type …`**（与 intake 类型一致）；`abstract` 必用；异常再 WebSearch。类型映射见 `references/patent_type_search.yaml` |
+| 联网查新 | **`Read`** `disclosure/prior_art_search.md`。优先 **`cnipa_epub_search.py --type …`**（与 intake 一致）；**两段式**：关键词 → `EPUB_CLASS_HINT` / `ipc_codes`·`loc_codes` → `--class` 第二轮（发明/实用 IPC，外观 **LOC**）；1.1 优先第二轮；不足 4 条则同分类号回补第一轮，仍少可仅分类号/相邻号再查，禁止编造凑数。Google Patents `CPC=` 仅可选补充，被墙即跳过。`abstract` 必用；公布站失败再 WebSearch。见 `patent_type_search.yaml` |
 | 交底定稿 | 发明：`tools/shared/mermaid_render.py` → md+docx；实用/外观：按各类型 builder（外观 md+docx 须同时嵌实拍与线稿） |
 | 专利通俗解读 | **`Read`** `reader/patent_plain_reader.md`；实用/外观另 Read `reader/type_hooks.md` + `shared/fill_*` |
 | 解读取 PDF / 入库 | `tools/patent_reader/extract/fetch_patent_pdf.py`；`…/vault/write_patent_obsidian_note.py` 等（见 `tools/patent_reader/README.md`） |
@@ -217,7 +217,7 @@ docs/oa/                     # 模式 D：embedding 配置模板种子（运行�
 □ 已区分模式 A / B / C / D / 迭代，未混跑
 □ 交底未指定类型时已默认发明；材料偏实用/外观已按需反问
 □ Step 3–4 / Step 7 已 Read 对应类型子目录 md（非发明套用实用/外观）
-□ 查新 cnipa 已带与案件一致的 --type；abstract 必用
+□ 查新 cnipa 已带与案件一致的 --type；两段式（关键词 → IPC/LOC → --class）；外观用 LOC；1.1 优先第二轮，不足 4 条已同分类号回补（仍少可仅分类号/相邻号，未编造凑数）；未粘贴合并大杂烩；GP 被墙已跳过；abstract 必用
 □ 发明成文：3.1 已铺标题对象与领域术语；框图/流程/实施例贯穿标题实词；用词贴合话题背景（错位行话已换成领域表述，非靠定义保留）；3.3 独立模块、3.4 逐项对应 S 步；第五章为可实施机制
 □ 发明含公式：已写 formula_plan（范式∈references/formulas）且可算数值例；禁装饰音；已 check_formula_plan 或等价自检；行内为 \(...\)/$...$ 而非 (M_{\mathrm{…}})；latex_delimiters 无 hits；改正后已用时间戳 md 重出 Word
 □ 实用/外观已走 schema 填表（shared）并写出 figure_plan（含 relevance/quality 与必要 relates_to），未看图直接长文；实用只嵌入文线稿；外观 md+docx 同时嵌实拍与线稿；CAD 未入文

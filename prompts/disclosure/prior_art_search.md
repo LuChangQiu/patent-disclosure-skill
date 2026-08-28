@@ -11,6 +11,31 @@
 1. **站点**：[国家知识产权局 中国专利公布公告](http://epub.cnipa.gov.cn/)（**仅** `epub.cnipa.gov.cn`）。
 2. **工具**（本仓库 **`tools/crawl/`**）：**`cnipa_epub_search.py`** —— **一步**完成公布站检索与结果解析（Playwright 过站点 WAF）；结果页 HTML **仅在内存中处理，不落盘**。成功时终端含 **`EPUB_NOTE:`** / **`EPUB_HITS_JSON:`**。
 3. **专利类型过滤（与 intake 一致）**：官网首页支持勾选 **发明公布 / 发明授权 / 实用新型 / 外观设计**。脚本参数 **`--type invention|utility_model|design|all`**（默认 `all`）。intake 默认为发明时，查新应传 **`--type invention`**；实用新型 / 外观分别传 `utility_model` / `design`。映射见 **`references/patent_type_search.yaml`** 与 **`tools/shared/patent_type.py`**。
+3b. **两段式查新（必做，用于提高 1.1 相关度）**
+
+   不要把第一轮「一词一查再合并」的全部条目写进 1.1。流程：
+
+   1. **第一轮（召回）**：首页关键词，2～8 个检索单位（规则见下第 4 点）。成功时 JSON 含 **`ipc_codes` / `loc_codes`**（来自结果页「分类号」）；stderr 可能有 **`EPUB_CLASS_HINT: kind=ipc|loc codes=…`**。
+   2. **抽出分类号**：发明/实用新型用 IPC 前缀（如 `B01J20`，不要只留一个过细的 `B01J20/26/…`）；外观用 **LOC（洛迦诺）**（如 `26-05`）。取 **1～3 个**高频号。无分类号则跳过第二轮，但仍须按手段过滤第一轮。
+   3. **第二轮（收口）**：同一 `--type`，加 **`--class`**（`--ipc` / `--loc` 同义；最多 3 个号；带 `--class` 时词数最多 3）。核心词比第一轮更贴本案手段。脚本走公布站 **高级查询**（分类号 + 名称），例如：
+
+      ```bash
+      python …/cnipa_epub_search.py --type invention --class B01J20,B01D53 胺功能化
+      python …/cnipa_epub_search.py --type design --class 26-05 台灯
+      python …/cnipa_epub_search.py --type design --class 26-05
+      ```
+
+      第二轮 0 条：减少分类号或换更短核心词后重试，再按下面保底处理；**不要**改走需登录的专利检索及分析系统。
+
+   4. **写 1.1（条数门槛 + 保底）**：第二轮是精选层，第一轮是库存。按分类号重合 + 与本案相同的技术手段（吸附/接枝/再生，或外观的造型要点）筛选；可用 `ipc_codes`/`loc_codes` 对照 `EPUB_CLASS_HINT`。**禁止**把第一轮 8 个词合并后的大杂烩整表写入。
+
+      1. 第二轮筛后 **≥4 条**且手段对得上 → **只用第二轮**。
+      2. 第二轮筛后 **<4 条**（含 0 条）→ 从**第一轮**里捞 **同一 IPC/LOC**、手段还沾边的，补到约 **4～6 条**（分类号必须重合；规则同 `backfill_hits_for_disclosure`）。不是把合并全集写回 1.1。
+      3. 还不够 → 该类下**少用或不用名称词**再查一次（仅 `--class`，不跟检索词），或带上 HINT 里的**相邻号**（如台灯 HINT 的 `26-07`）。
+      4. 仍然少 → 1.1 如实写「检索范围内近邻较少」，**禁止编造条目凑数**。
+   5. **Google Patents（可选补充，失败即跳过）**：外网可能被墙。**至多尝试一次** WebSearch / 浏览器，查询串用 `patent_type.google_patents_websearch_query(核心词, type, class_codes)`（发明/实用含 `CPC=…/low`，外观带 LOC 号 + `type:DESIGN`）。超时、被墙、0 条 → **跳过**，不降级、不报失败、不阻塞 1.1。公布站两轮已够则不必强求。
+   6. **不做**：专利检索及分析系统（需登录）、同族当主检索、自训 IPC 模型。
+
 4. **国知局检索词（生成阶段必做，须在拼 Bash 之前完成）**
 
    - **拆分责任在 Agent**：在**生成/构造命令阶段**，从本案技术方案、专利点或用户主题中归纳 **2～8 个与方案相关度高的检索单位**，**仅用 ASCII 空格分隔**，再写入 `cnipa_epub_search.py` 的参数。每一单位宜为 **有检索意义的语义块**，例如：**专业术语**、**名词短语**、**名动组合（如「批量调度」「异构调度」）**、**业内固定搭配**；**不要**拆成过碎的单字、泛义双字（如单独 `检索`、`增强`、`系统`、`方法` 等泛词），也**不要**把无关联词硬凑成一串。
@@ -42,7 +67,7 @@
 
    - **合并**：一次调用若 stderr 含 **`EPUB_MERGE:`**，以 **stdout** 上**唯一一行** **`EPUB_HITS_JSON:`** 为准（脚本已按 `pub_number` 去重）。仅当拆成多批调用时，Agent 再按 **`pub_number`**（无则 **`link`**）合并。
    - **`cnipa_epub_search.py`** 按空白拆段、**同一浏览器**内一段一查并去重（**stderr** 可出现 **`EPUB_MERGE:`**）。
-   - 成功时 **stdout 仅一行** **`EPUB_HITS_JSON:`** + JSON 数组（UTF-8，含中文 `abstract`）；**`EPUB_MERGE:`** / **`EPUB_NOTE:`** / **`EPUB_HINT:`** / **`BROWSER:`** 等在 **stderr**（多为 ASCII 机读标记）。
+   - 成功时 **stdout 仅一行** **`EPUB_HITS_JSON:`** + JSON 数组（UTF-8，含中文 `abstract`、**`ipc_codes` / `loc_codes`**）；**`EPUB_MERGE:`** / **`EPUB_NOTE:`** / **`EPUB_HINT:`** / **`EPUB_CLASS_HINT:`** / **`BROWSER:`** 等在 **stderr**（多为 ASCII 机读标记）。
    - **stderr ≠ 失败**：退出码 **0** 且 stdout 有 `EPUB_HITS_JSON:` 即为成功。PowerShell 可能把 stderr 显示为 `NativeCommandError` 或中文乱码，**禁止**因此判定「未命中」或降级 WebSearch。**禁止** `2>&1` 后再在混合流里找 JSON。脚本已 UTF-8 输出，不必先 `chcp 65001`。
    - 解析命中时请以 **stdout 该行 JSON 为准**。
    - 将 JSON 中**可核验**的公开号、标题、**国知局站点内详情链接**写入查新笔记与 1.1（见下 **`abstract` 必用**）。
@@ -68,9 +93,9 @@
    - 用**中文关键词**、技术方案核心术语、应用场景；可组合 2–3 组查询。
    - 通过 **WebSearch** 或浏览器检索；优先可打开且与标题/作者匹配的链接。
 2. **专利公开文献（补充）**：[Google Patents](https://patents.google.com/)。
-   - **发明**：界面/参数倾向 **Patent（`type=PATENT`）** + `country:CN`；公开号常见 `CN…A` / `CN…B`。
+   - **发明**：界面/参数倾向 **Patent（`type=PATENT`）** + `country:CN`；公开号常见 `CN…A` / `CN…B`。第二轮分类号可拼 `CPC=B01J20/low`（见 3b.5，外网不通则跳过）。
    - **实用新型**：**无独立 Utility Model 类型**；用 Patent 域 + 关键词「实用新型」或公开号 `…U` 收窄，**类型过滤仍以国知局 A 渠道为准**。
-   - **外观**：勾选 / 使用 **Design（`type=DESIGN`）** + `country:CN`；公开号常见 `CN…S`。
+   - **外观**：勾选 / 使用 **Design（`type=DESIGN`）** + `country:CN`；公开号常见 `…S`。可把 LOC 号（如 `26-05`）当作补充词。
    - 每条使用**稳定著录页 URL**；查询串可参考 `tools/shared/patent_type.google_patents_websearch_query`。
 3. **其它来源**：英文文献、非中国专利等可继续用 Google Patents、出版社页面、DOI、arXiv 等 + WebSearch。
 4. **关键词构造**：技术方案核心术语、应用场景与方法名称，可组合 2–3 组查询。
@@ -106,7 +131,7 @@
 
 写入交底书 **1.1** 开头的「检索说明」时，面向**代理人/审查员**表述，**不要**暴露 Agent 查新流程或本仓库工具实现。
 
-- **须写**：实际使用的**公开数据库或渠道名称**（如「国家知识产权局专利公布公告系统」）、本案**主要检索词**（与 Step 5 用词一致或概括）；若部分条目经 **Google Patents** 等公开页复核著录项，可一句带过。
+- **须写**：实际使用的**公开数据库或渠道名称**（如「国家知识产权局专利公布公告系统」）、本案**主要检索词**；若做了分类号收口，可写 IPC 或外观 LOC（如「在 B01J20 类下」），**不要**写脚本参数名。若部分条目经 **Google Patents** 等公开页复核著录项，可一句带过。
 - **禁止写入 1.1 正文**：脚本/文件名（如 **`cnipa_epub_search.py`**、**`cnipa_epub_crawler.py`**）、「查新优先使用…检索工具」「是否触发 Google 学术降级」、Playwright、WebSearch、Agent、技能仓库名等**内部或流程元信息**。
 - **示例（须按本案替换检索词与渠道）**：
 

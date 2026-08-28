@@ -79,7 +79,7 @@
 - [ ] 第三章可追溯 StructureSchema  
 - [ ] 附图仅来自 `figure_plan` 且「如图 N」与 `fig` 对齐  
 - [ ] 总装+局部入文时 `relates_to` 已写且正文联读一致  
-- [ ] 查新使用 `--type utility_model`（或 all 后人工筛）  
+- [ ] 查新使用 `--type utility_model`（或 all 后人工筛）；第二轮不足 4 条已同 IPC 回补，未编造凑数  
 - [ ] 未把外观美感 / 纯方法写成构造主线  
 - [ ] 结构线稿已按 image_gen + structure_lineart_assist + 按件拼装 选用或生成（含 `parts/{视}_{id}.svg`）；件号对齐 StructureSchema；CAD 未入文  
 - [ ] 交付回复：若适用，已按 **`prompts/evolution/soft_nudge.md`** 决定是否加政策感知一句（低频）

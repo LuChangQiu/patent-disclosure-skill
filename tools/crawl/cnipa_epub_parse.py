@@ -9,10 +9,16 @@ from __future__ import annotations
 import json
 import re
 import sys
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 EPUB_BASE = "http://epub.cnipa.gov.cn/"
+
+
+# IPC 小组：B01J20/26、C08K3/04（可带 (2006.01)I 版本后缀）
+_IPC_GROUP_RE = re.compile(r"\b([A-HY]\d{2}[A-Z]\s*\d{1,4}\s*/\s*\d{2,})\b", re.I)
+# 洛迦诺：07-01、26-05（只在「分类号」块内提取，避免把 CSS 的 24px 当成 LOC）
+_LOC_RE = re.compile(r"\b(\d{2}-\d{2})\b")
 
 
 @dataclass
@@ -24,6 +30,8 @@ class EpubSearchHit:
     pub_number: str | None = None
     link: str | None = None
     abstract: str | None = None
+    ipc_codes: list[str] = field(default_factory=list)
+    loc_codes: list[str] = field(default_factory=list)
 
 
 def _html_fragment_to_plain(html_snippet: str) -> str:
@@ -34,6 +42,176 @@ def _html_fragment_to_plain(html_snippet: str) -> str:
     t = re.sub(r"\s+", " ", t).strip()
     t = re.sub(r"\s*全部\s*$", "", t).strip()
     return t
+
+
+def _normalize_ipc(code: str) -> str:
+    return re.sub(r"\s+", "", (code or "")).upper()
+
+
+def _class_chunk_from_html(html: str) -> str:
+    """截取「分类号」块纯文本，在「专利代理」之前停。"""
+    m = re.search(r"分类号\s*[：:]", html or "", flags=re.I)
+    if not m:
+        return ""
+    chunk = (html or "")[m.start() : m.start() + 2500]
+    chunk = re.split(r"专利代理", chunk, maxsplit=1)[0]
+    return _html_fragment_to_plain(chunk)
+
+
+def extract_class_codes_from_html(html: str) -> tuple[list[str], list[str]]:
+    """从结果卡片 HTML 抽出 IPC、LOC（公布站「分类号」字段）。"""
+    plain = _class_chunk_from_html(html)
+    ipc: list[str] = []
+    for m in _IPC_GROUP_RE.finditer(plain):
+        code = _normalize_ipc(m.group(1))
+        if code not in ipc:
+            ipc.append(code)
+    loc: list[str] = []
+    for m in _LOC_RE.finditer(plain):
+        code = m.group(1)
+        if code not in loc:
+            loc.append(code)
+    return ipc[:12], loc[:8]
+
+
+def ipc_search_prefix(code: str) -> str:
+    """第二轮用的分类号：B01J20/26 → B01J20（左前缀匹配）。"""
+    compact = _normalize_ipc(code)
+    m = re.match(r"^([A-HY]\d{2}[A-Z]\d+)", compact, re.I)
+    return (m.group(1) if m else compact).upper()
+
+
+def suggest_class_codes(
+    hits: list[EpubSearchHit],
+    *,
+    patent_type: str = "all",
+    limit: int = 3,
+) -> tuple[str, list[str]]:
+    """从命中汇总 1～3 个第二轮分类号。发明/实用→IPC 前缀；外观→LOC。"""
+    from collections import Counter
+
+    kind = "loc" if (patent_type or "").lower() == "design" else "ipc"
+    bag: list[str] = []
+    for h in hits:
+        if kind == "loc":
+            bag.extend(h.loc_codes or [])
+        else:
+            bag.extend(ipc_search_prefix(c) for c in (h.ipc_codes or []) if c)
+    if kind == "ipc" and not bag:
+        # 外观误用 invention 时仍可能只有 LOC
+        for h in hits:
+            bag.extend(h.loc_codes or [])
+        if bag:
+            kind = "loc"
+    if kind == "loc" and not bag:
+        for h in hits:
+            bag.extend(ipc_search_prefix(c) for c in (h.ipc_codes or []) if c)
+        if bag:
+            kind = "ipc"
+    counted = Counter(bag)
+    codes = [c for c, _n in counted.most_common(limit)]
+    return kind, codes
+
+
+def select_hits_for_disclosure(
+    hits: list[EpubSearchHit],
+    *,
+    class_prefixes: list[str] | None = None,
+    core_terms: list[str] | None = None,
+    limit: int = 8,
+) -> list[EpubSearchHit]:
+    """1.1 选用：分类号重合优先，再用题名/摘要里的核心手段词。"""
+    prefixes = [_normalize_ipc(p) for p in (class_prefixes or []) if p]
+    if not prefixes:
+        prefixes = [c for c in suggest_class_codes(hits)[1]]
+    terms = [t.strip().lower() for t in (core_terms or []) if t and t.strip()]
+    scored: list[tuple[int, EpubSearchHit]] = []
+    for h in hits:
+        codes = " ".join((h.ipc_codes or []) + (h.loc_codes or []))
+        codes_n = _normalize_ipc(codes).replace("/", "")
+        score = 0
+        matched_class = False
+        for p in prefixes:
+            token = p.replace("/", "")
+            if token and token in codes_n:
+                score += 4
+                matched_class = True
+                break
+        blob = f"{h.title or ''} {h.abstract or ''}".lower()
+        for t in terms:
+            if t and t in blob:
+                score += 2
+        if prefixes and not matched_class:
+            score -= 2
+        scored.append((score, h))
+    scored.sort(key=lambda x: (-x[0],))
+    picked = [h for s, h in scored if s > 0][:limit]
+    if len(picked) < min(3, limit) and scored:
+        # 分类号全空时仍给分数最高的几条，避免 1.1 空白
+        extra = [h for _s, h in scored if h not in picked]
+        picked.extend(extra[: max(0, min(3, limit) - len(picked))])
+    return picked[:limit]
+
+
+def _hit_key(h: EpubSearchHit) -> str:
+    return (h.pub_number or h.link or (h.title or "")[:120] or "").strip()
+
+
+def backfill_hits_for_disclosure(
+    primary: list[EpubSearchHit],
+    pool: list[EpubSearchHit],
+    *,
+    class_prefixes: list[str] | None = None,
+    core_terms: list[str] | None = None,
+    min_keep: int = 4,
+    limit: int = 6,
+) -> tuple[list[EpubSearchHit], str]:
+    """第二轮不足 ``min_keep`` 时，从第一轮池里按同一分类号回补。
+
+    返回 ``(hits, reason)``：``primary_enough`` / ``backfilled`` / ``still_short``。
+    不把分类号明显跑题的条目补进来；禁止为凑数编造命中。
+    """
+    cap = max(min_keep, limit)
+    seen: set[str] = set()
+    out: list[EpubSearchHit] = []
+    for h in primary:
+        k = _hit_key(h)
+        if k and k not in seen:
+            seen.add(k)
+            out.append(h)
+        if len(out) >= cap:
+            return out[:cap], "primary_enough"
+    if len(out) >= min_keep:
+        return out[:cap], "primary_enough"
+
+    ranked = select_hits_for_disclosure(
+        [h for h in pool if _hit_key(h) not in seen],
+        class_prefixes=class_prefixes,
+        core_terms=core_terms,
+        limit=cap,
+    )
+    prefixes = [_normalize_ipc(p).replace("/", "") for p in (class_prefixes or []) if p]
+    added = 0
+    for h in ranked:
+        k = _hit_key(h)
+        if not k or k in seen:
+            continue
+        if prefixes:
+            codes_n = _normalize_ipc(
+                " ".join((h.ipc_codes or []) + (h.loc_codes or []))
+            ).replace("/", "")
+            if not any(p and p in codes_n for p in prefixes):
+                continue
+        seen.add(k)
+        out.append(h)
+        added += 1
+        if len(out) >= cap:
+            break
+    if len(out) < min_keep:
+        return out[:cap], "still_short"
+    if added:
+        return out[:cap], "backfilled"
+    return out[:cap], "still_short"
 
 
 def _extract_abstract_from_item_html(item_html: str) -> str | None:
@@ -91,12 +269,15 @@ def parse_search_result_html(html: str, base_url: str = EPUB_BASE) -> list[EpubS
         text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", row)).strip()
         if len(text) < 8 and not pub_number:
             continue
+        ipc, loc = extract_class_codes_from_html(row)
         hits.append(
             EpubSearchHit(
                 raw_html=row[:2000],
                 title=title or (text[:200] if text else None),
                 pub_number=pub_number,
                 link=link,
+                ipc_codes=ipc,
+                loc_codes=loc,
             )
         )
     seen: set[str] = set()
@@ -167,6 +348,7 @@ def _parse_overview_card_layout(html: str) -> list[EpubSearchHit]:
             if m_pub and not pub_number:
                 pub_number = m_pub.group(1).strip()
         abstract = _extract_abstract_from_item_html(item_html)
+        ipc, loc = extract_class_codes_from_html(item_html)
         if not title and not pub_number and not link:
             continue
         raw = "|".join(
@@ -179,6 +361,8 @@ def _parse_overview_card_layout(html: str) -> list[EpubSearchHit]:
                 pub_number=pub_number,
                 link=link,
                 abstract=abstract,
+                ipc_codes=ipc,
+                loc_codes=loc,
             )
         )
     seen: set[str] = set()
@@ -221,12 +405,15 @@ def _parse_search_result_fallback_links(html: str) -> list[EpubSearchHit]:
         raw = m.group(0)[:2000]
         if len(title) < 2 and not pub_number:
             continue
+        ipc, loc = extract_class_codes_from_html(raw)
         hits.append(
             EpubSearchHit(
                 raw_html=raw,
                 title=title or None,
                 pub_number=pub_number,
                 link=link,
+                ipc_codes=ipc,
+                loc_codes=loc,
             )
         )
     seen: set[str] = set()
@@ -246,6 +433,8 @@ def hits_to_jsonable(hits: list[EpubSearchHit]) -> list[dict]:
     for h in hits:
         d = asdict(h)
         d.pop("raw_html", None)
+        d["ipc_codes"] = list(h.ipc_codes or [])
+        d["loc_codes"] = list(h.loc_codes or [])
         rows.append(d)
     return rows
 

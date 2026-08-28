@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-中国专利公布公告网站点：http://epub.cnipa.gov.cn/ —— **首页「公布公告查询」** 检索（#indexForm / #searchStr）。
+中国专利公布公告网站点：http://epub.cnipa.gov.cn/ —— **首页「公布公告查询」**（#indexForm / #searchStr）及 **高级查询**（/Advanced，#e51 分类号 + #ti 名称）。
 
 须安装 **Playwright**。浏览器启动见 ``tools/shared/browser.py``（系统 Chrome → Edge → 自带 Chromium；有系统浏览器时不必 ``playwright install chromium``）。若只需内存中解析、不落盘 HTML，优先用同目录 **`cnipa_epub_search.py`**；
 本文件侧重 **写出结果页 HTML** 与可插拔的 ``fetch_epub_result_html`` API。
@@ -67,6 +67,14 @@ from patent_type import (
 
 
 EPUB_BASE = "http://epub.cnipa.gov.cn/"
+EPUB_ADVANCED = EPUB_BASE.rstrip("/") + "/Advanced"
+# 高级查询页 checkbox（与首页 #fmgb 等不同）
+EPUB_ADVANCED_CHECKBOX = {
+    "fmgb": "isFmgb",
+    "fmsq": "isFmsq",
+    "xxsq": "isXx",
+    "wgsq": "isWg",
+}
 # 国知局 /Dxb/IndexQuery 结果页 <title>；改版时须同步单测与 _RESULT_PAGE_READY_JS
 EPUB_TITLE_RESULT = "专利查询结果展示"
 EPUB_TITLE_NO_HIT = "无查询结果"
@@ -177,6 +185,73 @@ def apply_epub_type_filter(page: Page, patent_type: str = TYPE_ALL) -> None:
             )
 
 
+def apply_epub_advanced_type_filter(page: Page, patent_type: str = TYPE_ALL) -> None:
+    """高级查询页勾选 #isFmgb / #isFmsq / #isXx / #isWg。"""
+    states = epub_checkbox_states(patent_type)
+    for home_id, want in states.items():
+        cid = EPUB_ADVANCED_CHECKBOX.get(home_id)
+        if not cid:
+            continue
+        box = page.query_selector(f"#{cid}")
+        if not box:
+            continue
+        try:
+            if want:
+                box.check(force=True)
+            else:
+                box.uncheck(force=True)
+        except Error:
+            page.evaluate(
+                """({id, checked}) => {
+                    const el = document.getElementById(id);
+                    if (!el) return;
+                    el.checked = checked;
+                    el.dispatchEvent(new Event('change', { bubbles: true }));
+                    el.dispatchEvent(new Event('click', { bubbles: true }));
+                }""",
+                {"id": cid, "checked": want},
+            )
+
+
+def wait_for_epub_advanced_ready(page: Page, *, max_wait_sec: float | None = None) -> None:
+    """打开 /Advanced，等到分类号框 #e51。"""
+    limit = max_wait_sec if max_wait_sec is not None else _max_wait_sec()
+    page.goto(EPUB_ADVANCED, wait_until="load", timeout=120_000)
+    elapsed = 0.0
+    step = 3.0
+    while elapsed < limit:
+        page.wait_for_timeout(int(step * 1000))
+        elapsed += step
+        if page.query_selector("#e51"):
+            return
+    raise TimeoutError(
+        f"{limit}s 内未出现高级查询分类号框 #e51；可增大 EPUB_WAF_MAX_WAIT_SEC"
+    )
+
+
+def submit_advanced_search(
+    page: Page,
+    keyword: str,
+    *,
+    class_code: str,
+    patent_type: str = TYPE_ALL,
+) -> None:
+    """高级查询：分类号 #e51 + 名称 #ti，类型勾选后提交。"""
+    apply_epub_advanced_type_filter(page, patent_type)
+    page.fill("#e51", class_code)
+    if page.query_selector("#ti"):
+        page.fill("#ti", keyword or "")
+    form = page.query_selector("#advForm")
+    if form is None:
+        raise RuntimeError("高级查询未找到 #advForm")
+    btn = form.query_selector("button")
+    if btn is None:
+        raise RuntimeError("高级查询未找到提交按钮")
+    btn.click()
+    page.wait_for_url("**/Dxb/AdvancedQuery", timeout=120_000)
+    _wait_result_page_ready(page)
+
+
 def submit_index_search(
     page: Page,
     keyword: str,
@@ -219,11 +294,17 @@ def search_epub_keywords(
     terms: list[str],
     *,
     patent_type: str = TYPE_ALL,
+    class_codes: list[str] | None = None,
     playwright_factory: Callable[[], Playwright] | None = None,
 ) -> list[tuple[str, list[EpubSearchHit]]]:
-    """一场检索共用一个浏览器；一词一页，返回与 ``terms`` 等长的 ``(html, hits)`` 列表。"""
-    if not terms:
+    """一场检索共用一个浏览器；一词一页，返回与检索次数等长的 ``(html, hits)``。
+
+    ``class_codes`` 非空时走公布站 **高级查询**（分类号 + 名称）；``terms`` 可为空（只按分类号，保底放宽）。
+    """
+    codes = [c.strip() for c in (class_codes or []) if c and str(c).strip()]
+    if not terms and not codes:
         return []
+    kw_list = list(terms) if terms else [""]
     pw_gen = playwright_factory or sync_playwright
     with pw_gen() as p:
         browser = _launch_browser(p)
@@ -231,11 +312,26 @@ def search_epub_keywords(
         try:
             page = context.new_page()
             out: list[tuple[str, list[EpubSearchHit]]] = []
-            for keyword in terms:
-                wait_for_epub_home_ready(page)
-                submit_index_search(page, keyword, patent_type=patent_type)
-                html = _safe_page_content(page)
-                out.append((html, parse_search_result_html(html)))
+            if not codes:
+                for keyword in kw_list:
+                    if not keyword:
+                        continue
+                    wait_for_epub_home_ready(page)
+                    submit_index_search(page, keyword, patent_type=patent_type)
+                    html = _safe_page_content(page)
+                    out.append((html, parse_search_result_html(html)))
+                return out
+            for code in codes:
+                for keyword in kw_list:
+                    wait_for_epub_advanced_ready(page)
+                    submit_advanced_search(
+                        page,
+                        keyword,
+                        class_code=code,
+                        patent_type=patent_type,
+                    )
+                    html = _safe_page_content(page)
+                    out.append((html, parse_search_result_html(html)))
             return out
         finally:
             context.close()
@@ -246,10 +342,14 @@ def search_epub_keyword(
     keyword: str,
     *,
     patent_type: str = TYPE_ALL,
+    class_codes: list[str] | None = None,
     playwright_factory: Callable[[], Playwright] | None = None,
 ) -> tuple[str, list[EpubSearchHit]]:
     rows = search_epub_keywords(
-        [keyword], patent_type=patent_type, playwright_factory=playwright_factory
+        [keyword],
+        patent_type=patent_type,
+        class_codes=class_codes,
+        playwright_factory=playwright_factory,
     )
     return rows[0]
 

@@ -26,17 +26,22 @@ python ${CLAUDE_SKILL_DIR}/tools/shared/patent_type.py --pub CN209861402U
 python ${CLAUDE_SKILL_DIR}/tools/crawl/cnipa_epub_search.py --type utility_model 卡扣
 python ${CLAUDE_SKILL_DIR}/tools/crawl/cnipa_epub_search.py --type design 灯具
 python ${CLAUDE_SKILL_DIR}/tools/crawl/cnipa_epub_search.py --type invention 调度
+python ${CLAUDE_SKILL_DIR}/tools/crawl/cnipa_epub_search.py --type invention --class B01J20 胺功能化
+python ${CLAUDE_SKILL_DIR}/tools/crawl/cnipa_epub_search.py --type design --class 26-05 台灯
+python ${CLAUDE_SKILL_DIR}/tools/crawl/cnipa_epub_search.py --type design --class 26-05
 ```
 
-实现：`tools/shared/patent_type.py` + `tools/crawl/cnipa_epub_crawler.apply_epub_type_filter`。
+第一轮首页关键词；stderr **`EPUB_CLASS_HINT:`** 与 JSON **`ipc_codes`/`loc_codes`** 供第二轮 `--class`（发明/实用 IPC，外观 LOC）。第二轮不足 4 条时从第一轮同分类号回补；仍少可仅分类号或相邻号再查，禁止编造凑数。Google Patents 的 `CPC=` / LOC 词仅为可选补充，外网失败即跳过。
+
+实现：`tools/shared/patent_type.py` + `cnipa_epub_crawler.apply_epub_type_filter`（首页）/ `apply_epub_advanced_type_filter`（`--class` 高级查询）。
 
 ## Google Patents（降级 / 补充；WebSearch 或浏览器）
 
 | 类型 | 是否有官方 type | 建议 |
 |------|-----------------|------|
-| 发明 | `type=PATENT`（界面 Patent） | `country:CN` + 关键词；公开号 CN…A/B |
+| 发明 | `type=PATENT`（界面 Patent） | `country:CN` + 关键词；可加 `CPC=小类/low`（可选，被墙跳过） |
 | 实用新型 | **无**独立 Utility Model 类型 | 仍用 PATENT 域 + 关键词 `实用新型` 或公开号 …U；**优先国知局 `--type utility_model`** |
-| 外观 | `type=DESIGN` | `country:CN` + DESIGN；公开号常见 …S |
+| 外观 | `type=DESIGN` | `country:CN` + DESIGN；可把 LOC 号当补充词 |
 
 无独立 Google Patents 爬虫时，Agent 用 WebSearch；查询串可参考 `patent_type.google_patents_websearch_query()`。
 

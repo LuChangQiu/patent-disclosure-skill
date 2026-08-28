@@ -63,7 +63,7 @@
 - [ ] **图示（按类型）**：发明须 fenced mermaid → `tools/shared/mermaid_render.py` 转 PNG，无 ASCII 框图；流程图节点若用 S1/S2 作 id，**可见标签须含该序号**（`S1["S1 …"]`，禁止 `S1[只写中文]`）；实用新型以 **`figure_plan.yaml`** 入文线稿为主（CAD/实拍不入文）；外观 **实拍 + 线稿** 均入 md 与 Word。正文「如图/见图 N」与清单 `fig` 一致。`.md` 已交付；发明须 `.docx`；实用建议 docx；外观须同名 `.docx`
 - [ ] **figure_plan（实用/外观）**：案件目录存在 `figure_plan.yaml`（或 json）；主题/材料若本轮有变，清单已重评（含 `relates_to`）；未入文图有 `reason`；总装+局部或入文多视时图际关联已填写
 - [ ] 章节引用：如「详见 3.4.1」须指向真实存在的章节
-- [ ] **1.1 / 在先对比**：列举的专利/文献/在先外观是否均附有**可访问且与著录项一致**的公开 URL（非编造）；是否与 `prior_art_search.md` 及检索说明自洽；**检索说明**是否**未**出现 `cnipa_epub_search.py`、WebSearch/降级等内部流程用语
+- [ ] **1.1 / 在先对比**：列举的专利/文献/在先外观是否均附有**可访问且与著录项一致**的公开 URL（非编造）；是否与 `prior_art_search.md` 及检索说明自洽；**检索说明**是否**未**出现 `cnipa_epub_search.py`、WebSearch/降级等内部流程用语；发明/实用是否经 IPC 第二轮（或已说明无分类号）；外观是否经 **LOC** 第二轮；1.1 是否**优先第二轮**并按分类/手段过滤；第二轮不足 4 条是否已从第一轮**同分类号**回补（仍少可仅分类号/相邻号再查），**未**编造条目凑数、**未**把第一轮合并全集写入 1.1
 - [ ] **查新摘要（国知局）**：凡 **`EPUB_HITS_JSON`** 中带非空 **`abstract`** 的条目，正文概括**是否体现对摘要的理解**；无 `abstract` 时是否已按 `prior_art_search.md` 补全理解
 - [ ] **查新类型**：`--type` 与文头专利类型一致（invention / utility_model / design）
 - [ ] **脚本判读**：未因 PowerShell stderr / 乱码 / `NativeCommandError` 把退出码 0 的查新或定稿当成失败；`LATEX_DELIM: hits=` 大于 0 视为分隔符未改好、Word 未出，须改正后重跑，不得交付坏公式 Word

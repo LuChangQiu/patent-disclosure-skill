@@ -41,7 +41,7 @@
 - **入文同时嵌干净实拍与合格线稿**（`photo_clean` + `kind: lineart`）。实拍不得标成线稿；CAD 禁止入文。交底对照用，**不**把交底视图集写成「申请必须六视」。  
 - **线稿（必做）**：成文前已按 `shared/image_gen.md` + `shared/design_lineart_assist.md` 选用或生成；不问用户。  
 - **交付**：`.md` 与同名 `.docx` 均须含上述实拍与线稿。  
-- 查新：`tools/crawl/cnipa_epub_search.py --type design`；每条在先外观须可核验来源。  
+- 查新：`tools/crawl/cnipa_epub_search.py --type design`；第一轮后按结果页 **LOC** 做 `--class` 第二轮；不足 4 条则同 LOC 回补第一轮，仍少可仅 `--class` / 相邻号再查，禁止编造。每条在先外观须可核验来源。Google Patents 可选，被墙即跳过。  
 - `not_design_signals` 非空时须反问是否改实用新型/发明。  
 - **禁止**交付正文末尾追加技能仓库 / `examples/` /「虚构教学」脚注。
 
@@ -63,7 +63,7 @@
 - [ ] 线稿经 image_gen + design_lineart_gate；CAD 未入文；实拍未标成 lineart  
 - [ ] 已交付同名 `.md` 与 `.docx`，两套都嵌实拍与线稿  
 - [ ] 未把功能构造写成外观要点  
-- [ ] 查新 `--type design`  
+- [ ] 查新 `--type design`；已按 LOC 做 `--class` 第二轮（或第一轮无分类号已按造型要点过滤）；不足 4 条已同 LOC 回补，未编造凑数  
 - [ ] 交付回复：若适用，已按 **`prompts/evolution/soft_nudge.md`** 决定是否加政策感知一句（低频）
 - [ ] 交付回复末尾：若 cad_scan 为 `ask_enable_step_parse`，交底已落盘后再反问是否开启 STEP 解析；未得「是」未装依赖
 
