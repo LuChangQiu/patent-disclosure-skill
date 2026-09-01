@@ -28,6 +28,11 @@ class EpubSearchHit:
     raw_html: str
     title: str | None = None
     pub_number: str | None = None
+    application_number: str | None = None
+    applicant: str | None = None
+    inventors: list[str] | None = None
+    filing_date: str | None = None
+    publication_date: str | None = None
     link: str | None = None
     abstract: str | None = None
     ipc_codes: list[str] = field(default_factory=list)
@@ -227,7 +232,67 @@ def _extract_abstract_from_item_html(item_html: str) -> str | None:
     return plain if len(plain) >= 4 else None
 
 
+def _extract_labeled_value(item_html: str, *labels: str) -> str | None:
+    """Extract a ``dt``/``dd`` value from the publication-card layout."""
+    alternatives = "|".join(re.escape(label) for label in labels)
+    m = re.search(
+        rf"<dt[^>]*>\s*(?:{alternatives})\s*[：:]?\s*</dt>\s*<dd[^>]*>(.*?)</dd>",
+        item_html,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    if not m:
+        return None
+    value = _html_fragment_to_plain(m.group(1))
+    return value or None
+
+
+_APPLICATION_NUMBER_RE = re.compile(
+    r"(?<!\d)(?:CN\s*)?(\d{12}(?:\.[0-9Xx]|[0-9Xx]))(?!\d)",
+    re.IGNORECASE,
+)
+
+
+def normalize_application_number(value: str | None) -> str | None:
+    """Normalize a Chinese application number to ``YYYY...N.check`` form."""
+    if not value:
+        return None
+    m = _APPLICATION_NUMBER_RE.search(value.strip())
+    if not m:
+        return None
+    number = m.group(1).upper()
+    if "." not in number:
+        number = f"{number[:-1]}.{number[-1]}"
+    return number
+
+
+def _split_people(value: str | None) -> list[str] | None:
+    if not value:
+        return None
+    names = [
+        re.sub(r"^全部\s*", "", part.strip())
+        for part in re.split(r"[;；,，、]", value)
+        if part.strip()
+    ]
+    return names or None
+
+
+def parse_reported_total(html: str) -> int | None:
+    """Return the result count displayed by CNIPA when the page exposes it."""
+    plain = _html_fragment_to_plain(html)
+    patterns = (
+        r"(?:共|总计|合计)\s*([\d,]+)\s*(?:条|项|件)",
+        r"(?:检索结果|查询结果)\s*[：:]?\s*([\d,]+)\s*(?:条|项|件)",
+    )
+    for pattern in patterns:
+        m = re.search(pattern, plain, re.IGNORECASE)
+        if m:
+            return int(m.group(1).replace(",", ""))
+    return None
+
+
 def _abs_url(href: str) -> str:
+    if not href or href.lower().startswith(("javascript:", "#")):
+        return ""
     if href.startswith("http://") or href.startswith("https://"):
         return href
     if href.startswith("/"):
@@ -251,15 +316,42 @@ def parse_search_result_html(html: str, base_url: str = EPUB_BASE) -> list[EpubS
         low = row.lower()
         if "indexquery" in low or "searchstr" in low:
             continue
-        title_m = re.search(
-            r'title="([^"]+)"',
-            row,
-            re.IGNORECASE,
-        ) or re.search(r">([^<]{6,200})<", row)
-        title = title_m.group(1).strip() if title_m else None
-        link_m = re.search(r'href="([^"]+)"', row)
+        cell_html = re.findall(
+            r"<td[^>]*>(.*?)</td>", row, flags=re.IGNORECASE | re.DOTALL
+        )
+        cells = [_html_fragment_to_plain(cell) for cell in cell_html]
+        application_index = next(
+            (
+                index
+                for index, cell in enumerate(cells)
+                if normalize_application_number(cell)
+            ),
+            None,
+        )
+        application_number = (
+            normalize_application_number(cells[application_index])
+            if application_index is not None
+            else None
+        )
+        applicant = None
+        title = None
+        if application_index is not None:
+            if application_index + 1 < len(cells):
+                applicant = cells[application_index + 1] or None
+            if application_index + 2 < len(cells):
+                title = cells[application_index + 2] or None
+        title_m = re.search(r'title="([^"]+)"', row, re.IGNORECASE)
+        if not title and title_m:
+            title = title_m.group(1).strip()
+        link_scope = (
+            cell_html[application_index]
+            if application_index is not None and application_index < len(cell_html)
+            else row
+        )
+        link_m = re.search(r'href="([^"]+)"', link_scope, re.IGNORECASE)
         href = link_m.group(1).strip() if link_m else None
         link = _abs_url(href) if href else None
+        link = link or None
         pub_m = re.search(
             r"(CN\s*\d{9,}[A-Z]\s*|ZL\s*\d{9,}\.\d+)",
             row,
@@ -267,7 +359,7 @@ def parse_search_result_html(html: str, base_url: str = EPUB_BASE) -> list[EpubS
         )
         pub_number = pub_m.group(1).replace(" ", "") if pub_m else None
         text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", row)).strip()
-        if len(text) < 8 and not pub_number:
+        if not application_number and not pub_number:
             continue
         ipc, loc = extract_class_codes_from_html(row)
         hits.append(
@@ -275,6 +367,8 @@ def parse_search_result_html(html: str, base_url: str = EPUB_BASE) -> list[EpubS
                 raw_html=row[:2000],
                 title=title or (text[:200] if text else None),
                 pub_number=pub_number,
+                application_number=application_number,
+                applicant=applicant,
                 link=link,
                 ipc_codes=ipc,
                 loc_codes=loc,
@@ -283,7 +377,7 @@ def parse_search_result_html(html: str, base_url: str = EPUB_BASE) -> list[EpubS
     seen: set[str] = set()
     out: list[EpubSearchHit] = []
     for h in hits:
-        key = h.pub_number or h.title or h.raw_html[:80]
+        key = h.pub_number or h.application_number or h.title or h.raw_html[:80]
         if key in seen:
             continue
         seen.add(key)
@@ -316,7 +410,7 @@ def _parse_overview_card_layout(html: str) -> list[EpubSearchHit]:
     hits: list[EpubSearchHit] = []
     for item_html in blocks:
         tm = re.search(
-            r'<h1\s+class="title">\s*([^<]+?)\s*</h1>',
+            r'<h1[^>]*class="[^"]*\btitle\b[^"]*"[^>]*>\s*([^<]+?)\s*</h1>',
             item_html,
             flags=re.IGNORECASE | re.DOTALL,
         )
@@ -347,6 +441,19 @@ def _parse_overview_card_layout(html: str) -> list[EpubSearchHit]:
             )
             if m_pub and not pub_number:
                 pub_number = m_pub.group(1).strip()
+        application_number = normalize_application_number(
+            _extract_labeled_value(item_html, "申请号")
+        )
+        applicant = _extract_labeled_value(
+            item_html, "申请人", "专利权人", "申请（专利权）人"
+        )
+        inventors = _split_people(
+            _extract_labeled_value(item_html, "发明人", "设计人")
+        )
+        filing_date = _extract_labeled_value(item_html, "申请日")
+        publication_date = _extract_labeled_value(
+            item_html, "申请公布日", "授权公告日", "公开（公告）日"
+        )
         abstract = _extract_abstract_from_item_html(item_html)
         ipc, loc = extract_class_codes_from_html(item_html)
         if not title and not pub_number and not link:
@@ -359,6 +466,11 @@ def _parse_overview_card_layout(html: str) -> list[EpubSearchHit]:
                 raw_html=raw,
                 title=title,
                 pub_number=pub_number,
+                application_number=application_number,
+                applicant=applicant,
+                inventors=inventors,
+                filing_date=filing_date,
+                publication_date=publication_date,
                 link=link,
                 abstract=abstract,
                 ipc_codes=ipc,
@@ -368,7 +480,7 @@ def _parse_overview_card_layout(html: str) -> list[EpubSearchHit]:
     seen: set[str] = set()
     out: list[EpubSearchHit] = []
     for h in hits:
-        key = h.pub_number or h.link or (h.title or "")[:120]
+        key = h.pub_number or h.application_number or h.link or (h.title or "")[:120]
         if key in seen:
             continue
         seen.add(key)
