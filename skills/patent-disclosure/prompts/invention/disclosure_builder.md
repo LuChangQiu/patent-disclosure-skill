@@ -17,7 +17,7 @@
    - 3.2 系统框图（**mermaid**，如 `flowchart` + `subgraph` 分层；交付前经工具转 PNG；**不要** ASCII 文字框图）
    - 3.3 模块功能说明（聚焦作用与关联关系，非输入输出）
    - 3.4 系统流程说明（**mermaid 流程图**，交付前经工具转 PNG；**不要** ASCII 文字/箭头流程图）
-   - 3.4.1 符号与公式（出现公式或形式化变量时**须设**；**先**写案件目录 `formula_plan.yaml` 再成文；体例见 **§7.7**、范式库 `references/formulas/`、**`template_reference.md` §3.4.1**）
+   - 3.4.1 符号与公式（出现公式或形式化变量时**须设**；**先**写案件目录 `formula_plan.yaml` 再成文；材料式保真，见 **§7.7**、**`template_reference.md` §3.4.1**）
    - 3.5 关键技术参数（参数表「符号」列与 3.4.1 **同形**）
 5. 四、与现有技术相比，本发明具有哪些优点？
 6. 五、本发明的技术关键点和欲保护点是什么？
@@ -96,24 +96,25 @@ Agent **落盘时**即采用上述命名，并在回复中写明路径，便于�
 ## 7.7 符号与公式体例（必遵）
 
 撰写 **3.4.1**、**3.5** 及全文含 LaTeX 的段落时须遵循；正/反例见 **`template_reference.md` §3.4.1**。  
-范式菜单（可外挂扩展）：**`references/formulas/paradigms.yaml`**（说明见同目录 `README.md`）。
+合同：`references/schemas/formula_plan.schema.yaml`。范式库 **`references/formulas/paradigms.yaml`** 只给 **材料没有的式** 当起草菜单（说明见同目录 `README.md`）。
 
 ### 成文前：`formula_plan`（有公式时必做）
 
-1. **`Read`** `references/formulas/paradigms.yaml`（或先 `python tools/formula_paradigms.py list [--case-dir …]` 看合并结果）。  
-2. 在案件目录写出 **`formula_plan.yaml`**（合同：`references/schemas/formula_plan.schema.yaml`）：选定 `paradigm_ids` / 可选 `combo_id`、主式人话、本案符号、**可代入数值例**。  
-3. 校验：`python tools/check_formula_plan.py -i …/formula_plan.yaml --eval`；**不通过不得写 3.4.1**。简单式由脚本代入 `numeric_example` 核对；求和/范数/分位等复杂式脚本会警告跳过，须手算。  
-4. 再写正文 3.4.1：只展开计划中的式；打分与限频触发宜分式 (1)/(2)。  
-5. 建议顺序：**流程文字 → 数值走查（可放第六章草稿）→ 锁定公式 → 回填符号表 / 3.5**。
+1. **先扫材料**：编号公式、LaTeX、Word 公式、论文插式一律列入候选（出处 + 一句话在算什么）。对照 **已选专利点 / 3.3 / 3.4** 勾选进 `equations`；不采用的写入 `omitted`（`ref` + `reason`），禁止静默丢掉。  
+2. 在案件目录写出 **`formula_plan.yaml`**：每条式标记 **`origin: source`（材料转录）或 `origin: agent`（技能补写）**。source 填 `source_ref` 与原文 `latex`；只做分隔符等机械体例时把原材料写入 `original_latex`。**禁止**把材料公式改写成范式库模板。  
+3. **仅当材料没有对应式** 才 `Read` `references/formulas/paradigms.yaml`（或 `python tools/formula_paradigms.py list [--case-dir …]`），为 agent 式选 `paradigm_id` / 可选 `combo_id`，并给 **可代入数值例**。  
+4. 校验：`python tools/check_formula_plan.py -i …/formula_plan.yaml --eval`；**不通过不得写 3.4.1**。简单 agent 式由脚本代入 `numeric_example`；source 复杂式脚本会跳过，须手算或从缺，**不得**为通过 `--eval` 降维改写。  
+5. 再写正文 3.4.1：只展开计划中的式。agent 起草的打分与限频触发宜分式 (1)/(2)。  
+6. 建议顺序：**流程文字 → 从材料锁定公式 →（缺口才起草）→ 回填符号表 / 3.5**。
 
-覆盖范式：环境变量 `PATENT_FORMULA_PARADIGMS`，或案件目录 `formula_paradigms.yaml`。
+覆盖范式（仅 agent）：环境变量 `PATENT_FORMULA_PARADIGMS`，或案件目录 `formula_paradigms.yaml`。
 
 ### 符号表先行
 
 - 撰写 **3.4.1** 或全文含 LaTeX 时，**先写符号与变量定义**（可按（1）任务/对象下标、（2）节点/环境下标、（3）标量与向量分组），每项至少含：**符号、含义、下标含义（如 \(i\)=任务、\(j\)=节点）、量纲或取值范围**。
 - 其后公式、**3.5 参数表**、**第六章实施例**中出现的符号须与符号表 **同形、同义**。
 - **禁止同一字母多义**：例如任务侧权重用 \(b\)，节点侧饱和度应改用 \(g\)、\(h\) 等其它字母，勿任务/节点共用 \(b\) 表示不同物理量。
-- **选题不创作**：主式须来自范式库 `id`；禁止未登记的装饰性「论文风」自创式。平滑用范式 `ema_smooth` + 符号 \(A\)，**禁止** `\tilde`/`\hat`/`\bar` 等装饰音（与范式库 `rules.forbid_accents` 一致）。
+- **来源优先于范式**：材料已有的主式 `origin: source` 保真转录，**禁止**为套 `paradigms.yaml` 而改写。仅材料没有的式才 `origin: agent` 并从范式库选题；禁止未登记的装饰性「论文风」自创式。agent 平滑用范式 `ema_smooth` + 符号 \(A\)，**禁止** `\tilde`/`\hat`/`\bar` 等装饰音。source 式若原文含装饰音，可保留或仅在成文层改独立符号并填写 `original_latex`。
 
 ### 下标与上标
 

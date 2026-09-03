@@ -163,6 +163,8 @@ python skills/patent-oa/tools/config.py set --preset zhipu
 python skills/patent-oa/tools/ingest_case.py -i path/to/case.md
 python skills/patent-oa/tools/refresh_vault.py   # 刷新 oa 索引 / Bases / 关联 Canvas
 python skills/patent-oa/tools/search_cases.py --query "创造性 区别特征" --defect inventiveness --top-k 5
+# 用户确认采纳某份草稿后，才出陈述正文 Word
+# python skills/patent-oa/tools/emit_opinion_docx.py -i outputs/oa/案/意见陈述_时间戳.md
 ```
 
 Obsidian 案例落在 `{vault}/oa/cases/history/`（另有 `pending/`、`drafts/`、`playbooks/`）。与主依赖**独立**。细则见 `skills/patent-oa/prompts/`、`skills/patent-oa/tools/README.md`、[skills/patent-oa/SKILL.md](skills/patent-oa/SKILL.md)。

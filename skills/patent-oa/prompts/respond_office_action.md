@@ -116,4 +116,24 @@ python skills/patent-oa/tools/ingest_playbook.py list
 - 命中案例 `case_id`（若有）与是否用了手册 `{slug}`  
 - **本稿为内部草稿，须复核后递交**  
 - 迭代：用户可指定策略重出（如「第 1 条改成修改权利要求再出一稿」）→ 重复第 4 步，另存新文件；可多次。  
+- **不要**在本步出 Word。换策略只出新草稿 md。  
 - 摘要之后按 **`skills/patent-oa/prompts/soft_nudge.md`** 决定是否加库厚度提示（先 `--inventory`；不入草稿正文）。
+
+### 6. 确认采纳 → 意见陈述正文 Word（须用户点名）
+
+仅当用户明确采纳某一份草稿（「用这一稿」「出 Word」「可以定稿」「采纳」等）后才做。**禁止**在首稿或换策略时自动出 Word。
+
+1. 以**被采纳的那份** `意见陈述草稿_*.md` 为来源；另存 `outputs/oa/{同一案件}/意见陈述_{时间戳}.md`（不覆盖草稿）。  
+2. **`Read`** `skills/patent-oa/assets/opinion_statement.md`，按模板写递交正文：著录表 + 逐条答复 + 修改说明 + 请求 + 附件。  
+3. 递交稿**只写给审查员看的话**。禁止写入内部 `strategy`、相对分、`case_id`、手册 slug、换策略说明。对比文件用公开号。  
+4. 缺申请号 / 发明名称 / 通知书名称时先问用户补全，**禁止编造**。发文日未知写「见通知书」。未改申请文件则第三节写「本申请文件未作修改。」  
+5. **不做**官方电子申请表格，**不**自动排版权利要求替换页（附件可只列「权要替换页另行准备」）。  
+6. 用本包脚本出 Word（**禁止**调用 `skills/patent-disclosure/tools/md_to_docx.py`）：
+
+```bash
+python skills/patent-oa/tools/emit_opinion_docx.py \
+  -i outputs/oa/{案件}/意见陈述_{时间戳}.md
+# → 同目录同名 .docx；机读 DOCX: ok=1
+```
+
+7. 对话交代 Word 路径，并写明：须代理人复核后递交；旧草稿 md 保留。用户再改策略 → 回到第 4 步另存草稿，**再确认**才出新 Word。

@@ -11,6 +11,7 @@
 | 意图 | 下一步 |
 |------|--------|
 | 针对通知书写答复 / 问审查意见怎么回 | **`Read`** `respond_office_action.md`（默认主路径） |
+| 采纳草稿 / 出意见陈述 Word | 仍走 `respond_office_action.md` 第 6 步（须已有草稿） |
 | 入库 / 脱敏归档历史案 | **`Read`** `ingest_case.md` |
 | 实务书蒸馏为经验手册 | **`Read`** `ingest_playbook.md`（先预读再蒸馏；只要本地路径） |
 | 配置 / 开启向量 | **`Read`** `configure_embedding.md`（对话问答 → set → selftest） |

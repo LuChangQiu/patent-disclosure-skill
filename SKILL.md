@@ -1,7 +1,7 @@
 ---
 name: patent-disclosure-skill
 description: "中国专利技能：挖掘专利点与编写交底书（发明/实用/外观），按著录字段检索公布公告，通俗解读专利，对照审查口径出政策简报，辅助审查答复。| China patents skill: mine patent points and draft disclosures, search CNIPA bibliographic records, explain patents, brief examination-policy changes for disclosures, and assist office-action responses."
-version: "4.0.0"
+version: "4.1.0"
 user-invocable: true
 argument-hint: "[可选：项目路径 / 交底书 / 专利检索 / 专利号或 PDF / 政策简报 / 审查答复]"
 allowed-tools: Read, Write, Edit, Grep, Glob, WebSearch, Bash
@@ -21,7 +21,8 @@ allowed-tools: Read, Write, Edit, Grep, Glob, WebSearch, Bash
 
 ## 路由
 
-- 填表、线稿、CAD、公式、Word 出图在交底包 `prompts/` 与 `tools/`；解读填表用解读包 `prompts/fill_*`；过 WAF 的 `browser.py` 各包自带副本。
+- 填表、线稿、CAD、公式、Word 出图在交底包 `prompts/` 与 `tools/`；解读填表用解读包 `prompts/fill_*`；过 WAF 的 `browser.py`、Markdown 转 Word 的 `md_to_docx.py` **各包自带副本**。
+- **禁止跨包调用**其他子技能的 `tools/`。需要同一能力就用本包副本。
 - 专利号或 PDF 且意图为「读懂」→ **优先解读**，不跑交底 Step 1–8。
 - **禁止**因写交底或读专利自动进入政策简报或审查答复。
 - 交底 Step 5 查新只用交底包轻量检索（一词一页）；按发明人/申请人等做著录检索时只用检索包，两者不要混用。
@@ -43,7 +44,7 @@ skills/patent-exam-policy/        # 政策简报（技能进化为旁路）
 - **脚本判读（尤其 Windows）**：stderr 有字 **不等于** 失败。以 **退出码 0** 和机读前缀为准：`EPUB_HITS_JSON:` / `EPUB_SEARCH_MD:` / `EPUB_SEARCH_JSON:` / `EPUB_CLASS_HINT:`、`PROBE:` / `BROWSER:`、`MERMAID:` / `DOCX:`。PowerShell 可能把 stderr 标成 `NativeCommandError`；**禁止**因此重跑安装或把查新降级 WebSearch。
 - **专利类型**：未显式指定时交底**默认发明**。
 - **脚本路径**：相对本技能仓库根（本文件所在目录）。整仓：`python skills/patent-disclosure/tools/…`。当前工作区不是本仓库时，把技能安装目录接到命令前面。单独拷走某一子包时，该包内用 `python tools/…`。不要写厂商环境变量。
-- **用户产出**：写在当前工作区 `outputs/`（解读 `outputs/patent_reader/`，检索 `outputs/patent-search/`，政策 `outputs/exam-policy/`），不要写到技能安装目录或 `tmp/`。调用脚本时 cwd 用工作区根；`-o` / `-w` 用上述相对路径。
+- **用户产出**：写在当前工作区 `outputs/`（解读 `outputs/patent_reader/`，检索 `outputs/patent-search/`，政策 `outputs/exam-policy/`，审查答复 `outputs/oa/`），不要写到技能安装目录或 `tmp/`。调用脚本时 cwd 用工作区根；`-o` / `-w` 用上述相对路径。
 
 ## 执行前核对
 
@@ -52,5 +53,6 @@ skills/patent-exam-policy/        # 政策简报（技能进化为旁路）
 □ 交底查新未调用 patent-search
 □ 著录检索未用交底一词一页结果冒充清单
 □ 政策简报 / 审查答复仅在显式触发时进入
+□ 未跨包调用其他子技能的 tools/
 □ 未把政策简报当成改技能；无点名未改交底包以外的目录
 ```

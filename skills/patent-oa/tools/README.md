@@ -41,7 +41,10 @@ python skills/patent-oa/tools/search_cases.py --pdf notice.pdf --defect inventiv
 python skills/patent-oa/tools/ingest_case.py -i path/to/case.md
 python skills/patent-oa/tools/refresh_vault.py   # 索引 + Bases + 关联 Canvas
 python skills/patent-oa/tools/refresh_vault.py --inventory  # 只读：历史案/手册数量（答复末尾引导用）
+python skills/patent-oa/tools/emit_opinion_docx.py -i outputs/oa/案/意见陈述_时间戳.md
 ```
+
+意见陈述 Word：**仅用户确认采纳某份草稿后**，按 `assets/opinion_statement.md` 写递交 md，再跑本包 `emit_opinion_docx.py`（`md_to_docx.py` 为交底包副本，禁止调用交底路径）。不做官方电子表单、不排版权要替换页。
 
 Obsidian 结构：`oa/cases/history/` · `oa/pending/` · `oa/drafts/` · `oa/playbooks/` + `_OA索引` / `_OA看板.base` / `_OA关联.canvas`。
 
@@ -54,4 +57,4 @@ python skills/patent-oa/tools/ingest_playbook.py ingest --from-skill-dir DISTILL
 python skills/patent-oa/tools/ingest_playbook.py list
 ```
 
-见 `skills/patent-oa/prompts/` 与 [SKILL.md](../../SKILL.md)。
+见 `skills/patent-oa/prompts/`、[docs/vault.md](../docs/vault.md) 与 [SKILL.md](../SKILL.md)。

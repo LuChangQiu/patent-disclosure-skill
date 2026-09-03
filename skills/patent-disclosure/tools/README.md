@@ -51,10 +51,10 @@ python tools/run_step_to_views.py --enable-step-parse -i a.step -o outputs/case/
 
 | 脚本 / 文档 | 作用 |
 |-------------|------|
-| **`references/formulas/paradigms.yaml`** | 默认可扩展范式库 |
-| **`references/schemas/formula_plan.schema.yaml`** | 案件 `formula_plan.yaml` 合同 |
+| **`references/formulas/paradigms.yaml`** | 无原文时的起草菜单 |
+| **`references/schemas/formula_plan.schema.yaml`** | 案件 `formula_plan.yaml` 合同（`origin` / `omitted`） |
 | **`formula_paradigms.py`** | `list` / `show` / `combos`（支持案件目录覆盖） |
-| **`check_formula_plan.py`** | 校验选题 id、禁装饰音、数值例；`--eval` 简单式代算；化学守恒 / 量纲粗检（按 tag） |
+| **`check_formula_plan.py`** | 校验来源标记、agent 选题 id、禁装饰音、数值例；`--eval` 简单式代算；化学守恒 / 量纲粗检 |
 
 ```bash
 python tools/formula_paradigms.py list

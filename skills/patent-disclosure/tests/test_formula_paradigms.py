@@ -70,6 +70,58 @@ class FormulaParadigmsTests(unittest.TestCase):
         self.assertFalse(r2["ok"])
         self.assertTrue(any("tilde" in e for e in r2["errors"]))
 
+    def test_source_plan_without_paradigm_ok(self) -> None:
+        plan = {
+            "plain_zh": "材料主式：状态转移",
+            "equations": [
+                {
+                    "tag": 1,
+                    "origin": "source",
+                    "source_ref": "设计说明 式(3)",
+                    "latex": r"x_{t+1} = A x_t + B u_t",
+                    "role": "other",
+                }
+            ],
+            "omitted": [
+                {"ref": "论文 式(8)", "reason": "对照实验"},
+            ],
+        }
+        r = check_plan(plan)
+        self.assertTrue(r["ok"], r)
+        self.assertFalse(any("paradigm_ids 为空" in e for e in r["errors"]))
+
+    def test_source_accent_is_warning_not_error(self) -> None:
+        plan = {
+            "equations": [
+                {
+                    "tag": 1,
+                    "origin": "source",
+                    "source_ref": "原文 式(1)",
+                    "latex": r"s = \tilde{a}",
+                }
+            ],
+        }
+        r = check_plan(plan)
+        self.assertTrue(r["ok"], r)
+        self.assertTrue(any("tilde" in w for w in r["warnings"]))
+
+    def test_agent_still_requires_paradigm(self) -> None:
+        plan = {
+            "plain_zh": "补写打分",
+            "equations": [
+                {
+                    "tag": 1,
+                    "origin": "agent",
+                    "latex": r"s = x + y",
+                    "role": "score",
+                }
+            ],
+            "numeric_example": {"given": {"x": 1, "y": 1}, "result": {"s": 2}},
+        }
+        r = check_plan(plan)
+        self.assertFalse(r["ok"])
+        self.assertTrue(any("agent" in e for e in r["errors"]))
+
 
 if __name__ == "__main__":
     unittest.main()

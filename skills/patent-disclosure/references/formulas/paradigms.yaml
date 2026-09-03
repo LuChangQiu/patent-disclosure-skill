@@ -1,11 +1,12 @@
-# 发明交底 · 公式推荐范式（可外挂扩展）
+# 发明交底 · 公式起草菜单（可外挂扩展）
 #
 # 默认路径：references/formulas/paradigms.yaml
 # 覆盖（后者覆盖同 id）：
 #   1) 环境变量 PATENT_FORMULA_PARADIGMS=绝对或相对路径
 #   2) 案件目录 formula_paradigms.yaml / formula_paradigms.json
 #
-# Agent：写 formula_plan / 3.4.1 时须从本文件（及覆盖合并结果）选题，禁止自创未登记范式。
+# 仅当 formula_plan 中 origin: agent（材料没有对应式）时从本文件选题。
+# 材料里已有的公式须 origin: source 保真转录，禁止为匹配本库而改写。
 
 version: 1
 

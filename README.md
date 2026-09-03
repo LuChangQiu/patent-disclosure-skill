@@ -159,7 +159,7 @@
 
 ### 审查答复辅助
 
-审查意见一来，往往要翻旧案、对法条、想策略。需要时可以说「审查答复 / `/审查答复`」：把通知书 PDF 交给技能，**先问清缺陷、再出意见陈述草稿**（须人审后才能递交）。草稿质量依赖自己的**历史案**和可选的**实务书经验手册**——库空时仍能出提纲式草稿，但会对不上旧打法。库里历史案或手册较少时，对话末尾会补一句短提示，引导提示使用「案例入库」或「实务书蒸馏」并给出本地 PDF 路径（先脱敏 / 先预读，不会偷偷改技能）。向量可跳过。细则见 [SKILL.md](SKILL.md) 审查答复入口、[skills/patent-oa/docs/README.md](skills/patent-oa/docs/README.md)、[skills/patent-oa/tools/README.md](skills/patent-oa/tools/README.md)。
+审查意见一来，往往要翻旧案、对法条、想策略。需要时可以说「审查答复 / `/审查答复`」：把通知书 PDF 交给技能，**先问清缺陷、再出意见陈述草稿**（须人审后才能递交）。确认采纳某一稿后，再出陈述正文 Word。草稿质量依赖自己的**历史案**和可选的**实务书经验手册**——库空时仍能出提纲式草稿，但会对不上旧打法。库里历史案或手册较少时，对话末尾会补一句短提示，引导提示使用「案例入库」或「实务书蒸馏」并给出本地 PDF 路径（先脱敏 / 先预读，不会偷偷改技能）。向量可跳过。细则见 [SKILL.md](SKILL.md) 审查答复入口、[skills/patent-oa/docs/vault.md](skills/patent-oa/docs/vault.md)、[skills/patent-oa/tools/README.md](skills/patent-oa/tools/README.md)。
 
 ### 著录检索
 

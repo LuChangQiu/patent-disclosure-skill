@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""校验案件 formula_plan：范式 id、禁装饰音、数值例等。
+"""校验案件 formula_plan：来源标记、agent 范式 id、禁装饰音、数值例等。
 
 用法：
   python tools/check_formula_plan.py -i outputs/某案/formula_plan.yaml
@@ -45,6 +45,18 @@ def _load(path: Path) -> dict[str, Any]:
     return data
 
 
+def equation_origin(eq: dict[str, Any]) -> str:
+    """source | agent | invalid。无 origin 且已填 paradigm_id 时按 agent（旧计划）。"""
+    raw = str(eq.get("origin") or "").strip().lower()
+    if raw in ("source", "agent"):
+        return raw
+    if raw:
+        return "invalid"
+    if str(eq.get("paradigm_id") or "").strip():
+        return "agent"
+    return "source"
+
+
 def _selected_tags(cfg: dict[str, Any], pids: list[str]) -> set[str]:
     tags: set[str] = set()
     for pid in pids:
@@ -78,17 +90,56 @@ def check_plan(
                 if str(pid) not in pids:
                     warnings.append(f"combo {combo_id} 含 {pid}，但 paradigm_ids 未列出（建议补全）")
 
-    if not pids and (plan.get("equations") or plan.get("plain_zh")):
-        errors.append("有公式提纲但 paradigm_ids 为空")
+    eqs = plan.get("equations") or []
+    if not isinstance(eqs, list):
+        errors.append("equations 须为列表")
+        eqs = []
+
+    origins: list[str] = []
+    for eq in eqs:
+        if not isinstance(eq, dict):
+            origins.append("invalid")
+        else:
+            origins.append(equation_origin(eq))
+
+    has_agent = any(o == "agent" for o in origins)
+    has_source = any(o == "source" for o in origins)
+
+    if has_agent and not pids:
+        derived: list[str] = []
+        for eq, o in zip(eqs, origins):
+            if not isinstance(eq, dict) or o != "agent":
+                continue
+            epid = str(eq.get("paradigm_id") or "").strip()
+            if epid:
+                derived.append(epid)
+        if derived:
+            warnings.append("含 agent 式但根级 paradigm_ids 为空（已按各式 paradigm_id 校验）")
+            pids = list(dict.fromkeys(derived))
+        else:
+            errors.append("含 origin: agent 的公式但 paradigm_ids / paradigm_id 为空")
 
     for pid in pids:
         if not paradigm_by_id(cfg, pid):
             errors.append(f"未知 paradigm_id: {pid}")
 
-    eqs = plan.get("equations") or []
-    if not isinstance(eqs, list):
-        errors.append("equations 须为列表")
-        eqs = []
+    omitted = plan.get("omitted")
+    if omitted is None:
+        omitted = []
+    if omitted and not isinstance(omitted, list):
+        errors.append("omitted 须为列表")
+        omitted = []
+    elif isinstance(omitted, list):
+        for i, item in enumerate(omitted):
+            if not isinstance(item, dict):
+                errors.append(f"omitted[{i}] 须为 mapping")
+                continue
+            ref = str(item.get("ref") or item.get("source_ref") or "").strip()
+            reason = str(item.get("reason") or item.get("reason_zh") or "").strip()
+            if not ref:
+                warnings.append(f"omitted[{i}] 缺 ref")
+            if not reason:
+                warnings.append(f"omitted[{i}] 缺 reason")
 
     forbid = list(rules.get("forbid_accent_commands") or [])
     if rules.get("forbid_accents", True) and not forbid:
@@ -99,18 +150,40 @@ def check_plan(
         if not isinstance(eq, dict):
             errors.append(f"equations[{i}] 须为 mapping")
             continue
+        origin = origins[i]
+        if origin == "invalid":
+            errors.append(
+                f"equations[{i}].origin 须为 source 或 agent，收到 {eq.get('origin')!r}"
+            )
         epid = str(eq.get("paradigm_id") or "").strip()
-        if epid and not paradigm_by_id(cfg, epid):
-            errors.append(f"equations[{i}].paradigm_id 未知: {epid}")
-        if epid and epid not in pids:
-            warnings.append(f"equations[{i}] 使用 {epid} 但未列入 paradigm_ids")
+        if origin == "agent":
+            if not epid:
+                errors.append(f"equations[{i}] origin=agent 但未填 paradigm_id")
+            elif not paradigm_by_id(cfg, epid):
+                errors.append(f"equations[{i}].paradigm_id 未知: {epid}")
+            elif epid not in pids:
+                warnings.append(f"equations[{i}] 使用 {epid} 但未列入 paradigm_ids")
+        elif origin == "source":
+            if not str(eq.get("source_ref") or "").strip():
+                warnings.append(f"equations[{i}] origin=source 建议填写 source_ref")
+            if epid and not paradigm_by_id(cfg, epid):
+                warnings.append(
+                    f"equations[{i}] source 式的 paradigm_id={epid} 不在库中（可选标签，已忽略）"
+                )
         lx = str(eq.get("latex") or "")
+        if origin in ("source", "agent") and not lx.strip():
+            errors.append(f"equations[{i}] 缺 latex")
         latex_blobs.append(lx)
         normalized = lx.replace("\\\\", "\\")
         for cmd in forbid:
             token = cmd if str(cmd).startswith("\\") else f"\\{cmd}"
-            if token in normalized:
-                errors.append(f"equations[{i}] 含禁用装饰音 {token}")
+            if token not in normalized:
+                continue
+            msg = f"equations[{i}] 含禁用装饰音 {token}"
+            if origin == "agent":
+                errors.append(msg)
+            else:
+                warnings.append(msg + "（source 式保真；成文若改记号须填 original_latex）")
 
     plain = str(plan.get("plain_zh") or "").strip()
     if eqs and not plain:
@@ -118,8 +191,14 @@ def check_plan(
 
     if rules.get("require_numeric_example", True) and (eqs or pids):
         ne = plan.get("numeric_example") or {}
-        if not isinstance(ne, dict) or not (ne.get("given") or ne.get("result")):
-            errors.append("缺少 numeric_example.given / result（可算数值例）")
+        missing_ne = not isinstance(ne, dict) or not (ne.get("given") or ne.get("result"))
+        if missing_ne:
+            if has_agent:
+                errors.append("缺少 numeric_example.given / result（可算数值例）")
+            elif has_source:
+                warnings.append(
+                    "origin=source 建议补 numeric_example；复杂式可手算或从缺，勿为代算改写公式"
+                )
 
     syms = plan.get("symbols") or []
     max_sym = int(rules.get("max_free_symbols") or 0)

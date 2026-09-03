@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""加载 / 合并发明交底公式推荐范式。
+"""加载 / 合并发明交底公式起草菜单（仅 origin: agent 选题）。
 
 用法：
   python tools/formula_paradigms.py list

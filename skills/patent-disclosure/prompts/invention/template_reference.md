@@ -150,13 +150,13 @@ flowchart TD
 
 - 用文字**按步骤号逐项**说明 S1—Sn（与图中节点一一对应，**不替代**流程图图示）。步骤里须让**标题领域对象做事**，不能只在 3.1 出现一次，也不能几步合并成一段而不点步骤号。
 - 术语与 3.1 领域词同词；需要强调如何判定时，括号内写白话机制，仍不要改回错位行话。
-- 流程涉及算法、评分、约束或形式化变量时，在 **3.4.1** 集中给出符号定义与主公式；须先完成 **`formula_plan.yaml`**（范式选自 `references/formulas/paradigms.yaml`），并遵守 **`disclosure_builder.md` §7.7**
+- 流程涉及算法、评分、约束或形式化变量时，在 **3.4.1** 集中给出符号定义与主公式；须先完成 **`formula_plan.yaml`**（材料式 `origin: source` 保真；无原文才从 `paradigms.yaml` 起草），并遵守 **`disclosure_builder.md` §7.7**
 
 ### 3.4.1 符号与公式
 
-**撰写顺序**：**`formula_plan.yaml`（选题 + 数值例）** → 符号与变量定义 → 核心公式（含式 (1)，可另列触发式 (2)）→ 文字解释与流程衔接。
+**撰写顺序**：**`formula_plan.yaml`（材料勾选 + 来源标记；缺口才起草）** → 符号与变量定义 → 核心公式（含式 (1)）→ 文字解释与流程衔接。
 
-列出可用范式：`python tools/formula_paradigms.py list`。组合示例见配置中 `combos`（如 `match_then_rate_limit`）。
+材料没有对应式时，列出可用范式：`python tools/formula_paradigms.py list`。组合示例见配置中 `combos`（如 `match_then_rate_limit`）。
 
 #### 符号表示例（Markdown 正文可直接采用）
 
@@ -185,7 +185,8 @@ flowchart TD
 | 平滑画像 | \(A_{j,\mathrm{cpu}}\) + 文字说明 | \(\tilde{a}_{j,\mathrm{cpu}}\)（装饰音，Word 易渲怪） |
 | 节点可用 | \(A_{j,\mathrm{cpu}} \le 0\) 不可派发等 | \(a_j^{cpu} \le 0\) |
 | 多维度并列 | \(b_{i,\mathrm{cpu}},\, b_{i,\mathrm{mem}}\) | \(b_i^{cpu}, b_i^{mem}\) |
-| 选题 | 范式库 `weighted_sum_unit` + `dual_threshold` | 未登记的巨型单式、量纲混乱硬凑 |
+| 选题 | 材料已有式：`origin: source` 转录 | 把材料公式改写成库内 `weighted_sum` 等模板 |
+| 无原文时起草 | 范式库 `weighted_sum_unit` + `dual_threshold` | 未登记的巨型单式、量纲混乱硬凑 |
 | 块级主公式 | `\[ s_{ij} = \alpha x + \beta y - \lambda n \tag{1} \]` 单行 | 块内多行 `\\` 换行堆叠（渲染易失败） |
 | 逻辑连接 | 公式外写「且 \(A_{j,\mathrm{mem}}\le 0\)」 | 公式内 `\text{且}` |
 | 防零除 | \(\max(\varepsilon, b_{\mathrm{mem}})\)，\(\varepsilon\) 同量纲 | \(\max(1, b_{\mathrm{mem}})\) 且 \(b\) 为 MB |
@@ -258,7 +259,7 @@ flowchart TD
 ## 公式与参数一致性检查
 
 - 全文公式表述统一（如：置信度权重、密度调整系数）
-- **选题**：主式来自 `references/formulas/paradigms.yaml`；案件有 `formula_plan.yaml` 且数值例可算
+- **选题**：材料已有公式进 `formula_plan` 且 `origin: source` 可对上出处；无原文的式才来自 `paradigms.yaml`；案件有 `formula_plan.yaml`
 - **符号体例**：资源维度用下标 `_{\mathrm{cpu}}` 等，**无** `^{cpu}`/`^{mem}` 类上标维度写法；**无** `\tilde`/`\hat`/`\bar` 装饰音
 - **符号表完整**：3.4.1 已定义符号；式 (1) 及后文每个符号均在表中出现；**无**同一字母多义
 - **公式正确性与逻辑**：各式无笔误；不等式方向与文字一致；公式与 3.4 流程/3.3 模块可互推；边界情形不矛盾；量纲可加
