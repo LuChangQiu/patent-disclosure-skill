@@ -20,7 +20,7 @@ python skills/patent-disclosure/tools/image_gen.py --case-dir "outputs/{案件�
 **不是**线稿（不得标成 `kind: lineart`）：
 
 - CAD / STEP 投影（`kind: cad` 的 SVG/PNG）— **任何类型都不入文**
-- 实拍、截图、场景图、效果图 — **不得当线稿**；外观的干净实拍见下方「入文」
+- 实拍、截图、场景图、效果图 — **不得当线稿**；外观的干净实拍见下方「入文」。发明用户点名的技术环境示意图按 `disclosure_builder.md` §7.4 入文，不要套本表 `photo_scene` 默认不入。
 
 这些仍打分；分数够才可能成为图生图的参考图。
 

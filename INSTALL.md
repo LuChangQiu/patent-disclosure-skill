@@ -53,6 +53,7 @@ git clone <本仓库 URL> "$env:USERPROFILE\.cursor\skills\patent-disclosure-ski
 若未使用上述 `skills/` 布局，也可**直接用 Cursor 打开本仓库根目录**作为工作区。分步指令在：
 
 - `skills/patent-disclosure/prompts/`（交底；含 `invention/`、`utility_model/`、`design/` 以及填表 / 线稿）
+- `skills/patent-application/prompts/`（申请文件四件套；须指定交底目录）
 - `skills/patent-reader/prompts/`（通俗解读；含本包 `fill_*`）
 
 Cursor 也会扫描 **`~/.claude/skills/`**、项目内 **`.claude/skills/`** 等路径；详见 Cursor 官方文档与当前版本设置项。
@@ -148,6 +149,22 @@ python skills/patent-search/tools/cnipa_search.py --inventor "发明人姓名" \
 **Windows 终端**：定稿 / 查新脚本会把 stdout、stderr 设为 UTF-8，子进程带 `PYTHONUTF8=1`。Agent **以退出码和机读前缀为准**（`EPUB_HITS_JSON:`、`PROBE:`、`MERMAID:`、`DOCX:`、`MATH:`）；stderr 有中文或 PowerShell `NativeCommandError` **不等于**失败。不必先 `chcp 65001`。若仍乱码，可设 **`PYTHONUTF8=1`**，且不要用 **`2>&1`** 把 JSON 混进错误流。
 
 `playwright` 已写入根目录 `requirements.txt`。若已按上文装过主依赖，**不必**再为查新单独 pip 一遍；`skills/patent-disclosure/tools/crawl/requirements-cnipa.txt` 仅在只装爬虫、不装整份主依赖时使用。未装或探测失败时，Step 5 仍可按该 prompt 降级为 **WebSearch**（如 Google 学术）。
+
+## 可选：申请文件（须显式；须指定交底目录）
+
+把已有交底产出改写成权利要求书、说明书、摘要与黑白附图。不另装依赖（PyYAML + 已有 python-docx / playwright）。不做 TIFF。
+
+```bash
+python skills/patent-application/tools/material_gate.py --case-dir outputs/{案件}
+python skills/patent-application/tools/render_invention_figures.py \
+  --plan outputs/patent-application/{案}/figures/invention_figures.yaml \
+  --out-dir outputs/patent-application/{案}/figures
+python skills/patent-application/tools/audit_claims.py outputs/patent-application/{案}/权利要求书.md
+python skills/patent-application/tools/check_support.py --dir outputs/patent-application/{案}
+python skills/patent-application/tools/emit_application_docx.py --dir outputs/patent-application/{案}
+```
+
+缺材料时门禁退出码为 2，应先回到交底技能补齐。细则见 [skills/patent-application/SKILL.md](skills/patent-application/SKILL.md)。
 
 ## 可选：审查答复案例库（默认关闭）
 
